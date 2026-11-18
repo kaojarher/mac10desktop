@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>macOS Sonoma 桌面環境</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Inter 與 Noto Sans TC 字體 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- 載入 Phosphor Icons 作為系統與應用程式圖示 -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- 載入 Google Identity Services (GIS) OAuth 2.0 驗證腳本 -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans TC"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 全局與桌面背景樣式 */
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea, .selectable-text {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', 'Noto Sans TC', -apple-system, sans-serif;
+    }
+
+    /* 預設桌布樣式 */
+    .wallpaper-sonoma {
+      background: radial-gradient(circle at 20% 20%, #ff7e5f 0%, transparent 45%),
+                  radial-gradient(circle at 80% 30%, #feb47b 0%, transparent 50%),
+                  radial-gradient(circle at 50% 80%, #2b5876 0%, #4e4376 60%, #141e30 100%);
+    }
+    .wallpaper-ventura {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 35%, #d43f8d 70%, #0250c5 100%);
+    }
+    .wallpaper-monterey {
+      background: radial-gradient(circle at 75% 20%, #ff5e62 0%, transparent 45%),
+                  linear-gradient(160deg, #3a1c71 0%, #d76d77 50%, #ffaf7b 100%);
+    }
+    .wallpaper-midnight {
+      background: radial-gradient(circle at 30% 25%, #1e3c72 0%, transparent 55%),
+                  radial-gradient(circle at 80% 75%, #2a5298 0%, transparent 50%),
+                  linear-gradient(180deg, #090d16 0%, #141e30 100%);
+    }
+    .wallpaper-aurora {
+      background: radial-gradient(circle at 15% 80%, #00f2fe 0%, transparent 45%),
+                  radial-gradient(circle at 85% 20%, #4facfe 0%, transparent 50%),
+                  linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    }
+
+    /* 毛玻璃特效 */
+    .glass-menubar {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+    }
+    .dark .glass-menubar {
+      background: rgba(24, 24, 28, 0.55);
+    }
+
+    .glass-dock {
+      background: rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    }
+    .dark .glass-dock {
+      background: rgba(30, 30, 35, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .glass-window {
+      background: rgba(250, 250, 252, 0.88);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow: 0 22px 50px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.2);
+    }
+    .dark .glass-window {
+      background: rgba(32, 33, 38, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 24px 55px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+
+    .glass-popover {
+      background: rgba(248, 248, 250, 0.82);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.22);
+    }
+    .dark .glass-popover {
+      background: rgba(36, 37, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    /* 視窗開啟與最小化動畫 */
+    @keyframes windowOpen {
+      from {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    .window-animate-in {
+      animation: windowOpen 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* 交通燈按鈕懸停效果 */
+    .traffic-lights:hover .traffic-icon {
+      opacity: 1;
+    }
+
+    /* Dock 圖示彈性過渡 */
+    .dock-item {
+      transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), margin 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-origin: bottom center;
+    }
+
+    @keyframes dockBounce {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-16px); }
+      70% { transform: translateY(-6px); }
+    }
+    .dock-bounce {
+      animation: dockBounce 0.55s ease;
+    }
+
+    /* 自訂捲軸 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(128, 128, 128, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(128, 128, 128, 0.55);
+    }
+
+    /* 視窗右下角縮放控制點 */
+    .resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body class="antialiased text-gray-900 dark:text-gray-100 select-none">
+
+  <!-- 主桌面容器 -->
+  <div id="desktop-root" class="relative w-screen h-screen overflow-hidden wallpaper-sonoma transition-all duration-700">
+    
+    <!-- 頂部選單列 (Menu Bar) -->
+    <header id="menubar" class="glass-menubar fixed top-0 left-0 right-0 h-7 px-3 flex items-center justify-between text-xs font-medium z-[9000] text-gray-900 dark:text-white shadow-sm">
+      <!-- 左側：Apple 標誌與當前應用程式選單 -->
+      <div class="flex items-center space-x-1 sm:space-x-3 h-full">
+        <!-- Apple 選單按鈕 -->
+        <button id="apple-menu-btn" onclick="togglePopover('apple-menu', event)" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 flex items-center transition">
+          <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 170 170">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.13-1.9-14.34-6.08-3.69-3.03-7.61-7.8-11.77-14.33-5.08-7.95-9.26-17.18-12.55-27.7-3.28-10.52-4.93-20.53-4.93-30.03 0-11.09 2.77-20.51 8.31-28.25 5.54-7.74 12.68-11.77 21.43-12.09 4.58 0 9.81 1.38 15.69 4.14 5.88 2.76 9.66 4.18 11.34 4.27 1.34 0 5.47-1.63 12.39-4.88 6.92-3.25 12.78-4.65 17.59-4.21 13.53 1.09 23.69 6.36 30.48 15.81-12.08 7.32-18.02 17.51-17.81 30.56.21 10.17 4.02 18.63 11.42 25.38 4.92 4.53 10.67 7.42 17.26 8.67-1.45 4.49-3.09 8.76-4.91 12.82zM119.22 31.9c0 8.01-2.93 15.49-8.79 22.43-7.07 8.26-15.62 13.03-24.91 12.28-.14-.98-.22-2.03-.22-3.15 0-7.69 3.35-15.92 9.31-22.71 2.98-3.42 6.76-6.27 11.34-8.54 4.57-2.26 8.91-3.51 13.01-3.74.18 1.18.26 2.33.26 3.43z"/>
+          </svg>
+        </button>
+
+        <!-- 當前作用中應用程式名稱 -->
+        <span id="active-app-name" class="font-bold tracking-tight px-1.5 py-0.5 rounded cursor-default">Finder</span>
+
+        <!-- 應用程式功能表項目 (桌面版顯示) -->
+        <nav id="app-menu-items" class="hidden md:flex items-center space-x-1 text-gray-800 dark:text-gray-200">
+          <button onclick="openApp('finder')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">檔案</button>
+          <button onclick="openApp('notes')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">編輯</button>
+          <button onclick="openApp('settings')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">顯示方式</button>
+          <button onclick="openApp('safari')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">前往</button>
+          <button onclick="minimizeAllWindows()" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">視窗</button>
+          <button onclick="openApp('terminal')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition">輔助說明</button>
+        </nav>
+      </div>
+
+      <!-- 右側：系統狀態圖示與即時時鐘 -->
+      <div class="flex items-center space-x-1 sm:space-x-2 h-full">
+        <!-- Google 帳號與雲端狀態按鈕 -->
+        <button id="menubar-google-btn" onclick="togglePopover('google-account-popover', event)" class="px-1.5 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition flex items-center space-x-1" title="Google 帳號與 Drive 雲端同步">
+          <i id="menubar-google-icon" class="ph-bold ph-google-logo text-sm"></i>
+          <span id="menubar-google-dot" class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+        </button>
+
+        <!-- 電池狀態 -->
+        <div class="hidden sm:flex items-center space-x-1 px-1.5 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 cursor-default" title="電池電量 98%（已連接電源）">
+          <span class="text-[11px] opacity-85">98%</span>
+          <i class="ph-fill ph-battery-charging text-base"></i>
+        </div>
+
+        <!-- Wi-Fi 圖示 -->
+        <button onclick="togglePopover('control-center', event)" class="px-1.5 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition" title="Wi-Fi：已連線">
+          <i class="ph-bold ph-wifi-high text-sm"></i>
+        </button>
+
+        <!-- Spotlight 搜尋圖示 -->
+        <button onclick="toggleSpotlight(event)" class="px-1.5 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition" title="Spotlight 搜尋">
+          <i class="ph-bold ph-magnifying-glass text-sm"></i>
+        </button>
+
+        <!-- 控制中心開關 -->
+        <button onclick="togglePopover('control-center', event)" class="px-1.5 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition" title="控制中心">
+          <i class="ph-bold ph-sliders-horizontal text-sm"></i>
+        </button>
+
+        <!-- 即時日期與時間 -->
+        <button id="menubar-clock" onclick="togglePopover('control-center', event)" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/15 transition whitespace-nowrap font-medium">
+          載入中...
+        </button>
+      </div>
+    </header>
+
+    <!-- Apple 選單下拉彈窗 -->
+    <div id="apple-menu" class="popover-panel hidden glass-popover fixed top-8 left-2.5 w-56 rounded-xl p-1.5 text-xs z-[9500] text-gray-800 dark:text-gray-100">
+      <button onclick="showAboutMac()" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition flex items-center justify-between">
+        <span>關於這台 Mac</span>
+      </button>
+      <div class="my-1 border-t border-gray-400/25"></div>
+      <button onclick="openApp('settings'); closeAllPopovers();" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition flex items-center justify-between">
+        <span>系統設定...</span>
+      </button>
+      <button onclick="openApp('finder'); closeAllPopovers();" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+        <span>App Store...</span>
+      </button>
+      <div class="my-1 border-t border-gray-400/25"></div>
+      <button onclick="minimizeAllWindows(); closeAllPopovers();" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+        <span>強制結束應用程式...</span>
+      </button>
+      <div class="my-1 border-t border-gray-400/25"></div>
+      <button onclick="triggerSleepEffect()" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+        <span>睡眠</span>
+      </button>
+      <button onclick="location.reload()" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+        <span>重新開機...</span>
+      </button>
+      <button onclick="triggerSleepEffect()" class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+        <span>鎖定螢幕</span>
+      </button>
+    </div>
+
+    <!-- Google 帳號與雲端狀態彈出面板 -->
+    <div id="google-account-popover" class="popover-panel hidden glass-popover fixed top-8 right-12 w-80 rounded-2xl p-3.5 text-xs z-[9500] text-gray-800 dark:text-gray-100 space-y-3">
+      <div class="flex items-center justify-between border-b border-gray-400/20 pb-2.5">
+        <div class="flex items-center space-x-2.5">
+          <div id="google-avatar-box" class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow">
+            <i class="ph-bold ph-google-logo"></i>
+          </div>
+          <div class="leading-tight overflow-hidden">
+            <div id="google-user-name" class="font-bold truncate">尚未登入 Google 帳號</div>
+            <div id="google-user-email" class="text-[10px] opacity-70 truncate">目前使用本機 LocalStorage 模式</div>
+          </div>
+        </div>
+        <span id="google-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-500/15 text-gray-600 dark:text-gray-300">離線本機</span>
+      </div>
+
+      <!-- GitHub Pages 網域提醒 -->
+      <div class="bg-amber-500/10 border border-amber-500/25 rounded-xl p-2.5 text-[11px] space-y-1">
+        <div class="font-semibold text-amber-700 dark:text-amber-300 flex items-center space-x-1">
+          <i class="ph-fill ph-info"></i>
+          <span>OAuth 2.0 授權來源提示</span>
+        </div>
+        <p class="opacity-80 leading-relaxed">部署至 GitHub Pages 時，請確認已將以下網址加入 Google Cloud Console「已授權的 JavaScript 來源」：</p>
+        <div id="current-origin-display" class="font-mono text-[10px] bg-black/5 dark:bg-white/10 px-2 py-1 rounded select-all truncate"></div>
+      </div>
+
+      <!-- 操作按鈕 -->
+      <div id="google-auth-actions" class="space-y-1.5">
+        <button onclick="handleGoogleSignIn()" class="w-full py-2 px-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold flex items-center justify-center space-x-2 shadow-sm transition">
+          <i class="ph-bold ph-google-logo"></i>
+          <span>登入 Google 帳號並連接 Drive</span>
+        </button>
+        <button onclick="exportAllLocalData()" class="w-full py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 font-medium flex items-center justify-center space-x-1.5 transition">
+          <i class="ph-bold ph-download-simple"></i>
+          <span>匯出本機資料備份 (.json)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 控制中心下拉彈窗 -->
+    <div id="control-center" class="popover-panel hidden glass-popover fixed top-8 right-2.5 w-72 rounded-2xl p-3 text-xs z-[9500] text-gray-800 dark:text-gray-100 space-y-2.5">
+      <div class="grid grid-cols-2 gap-2">
+        <!-- 連線模組 -->
+        <div class="bg-white/50 dark:bg-white/10 rounded-xl p-2.5 space-y-2">
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-wifi-high"></i>
+            </div>
+            <div class="leading-tight overflow-hidden">
+              <div class="font-semibold truncate">Wi-Fi</div>
+              <div class="text-[10px] opacity-70 truncate">Studio_5G</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-bluetooth"></i>
+            </div>
+            <div class="leading-tight">
+              <div class="font-semibold">藍牙</div>
+              <div class="text-[10px] opacity-70">已開啟</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-broadcast"></i>
+            </div>
+            <div class="leading-tight">
+              <div class="font-semibold">AirDrop</div>
+              <div class="text-[10px] opacity-70">只限聯絡人</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 深色模式與專注模式 -->
+        <div class="flex flex-col gap-2">
+          <button onclick="toggleDarkMode()" class="flex-1 bg-white/50 dark:bg-white/10 hover:bg-white/70 dark:hover:bg-white/15 rounded-xl p-2.5 flex items-center space-x-2.5 transition text-left">
+            <div id="cc-theme-icon" class="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center shrink-0">
+              <i class="ph-fill ph-moon"></i>
+            </div>
+            <div class="leading-tight">
+              <div class="font-semibold">外觀模式</div>
+              <div id="cc-theme-label" class="text-[10px] opacity-70">淺色模式</div>
+            </div>
+          </button>
+
+          <button onclick="openApp('settings'); closeAllPopovers();" class="flex-1 bg-white/50 dark:bg-white/10 hover:bg-white/70 dark:hover:bg-white/15 rounded-xl p-2.5 flex items-center space-x-2.5 transition text-left">
+            <div class="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0">
+              <i class="ph-fill ph-image"></i>
+            </div>
+            <div class="leading-tight">
+              <div class="font-semibold">更換桌布</div>
+              <div class="text-[10px] opacity-70">Sonoma 動態</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 顯示器亮度滑桿 -->
+      <div class="bg-white/50 dark:bg-white/10 rounded-xl p-2.5 space-y-1.5">
+        <div class="flex justify-between text-[11px] font-medium">
+          <span>顯示器亮度</span>
+          <span id="brightness-val">100%</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <i class="ph-fill ph-sun text-sm opacity-70"></i>
+          <input type="range" min="45" max="100" value="100" oninput="setScreenBrightness(this.value)" class="w-full accent-blue-500 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-lg cursor-pointer">
+        </div>
+      </div>
+    </div>
+
+    <!-- Spotlight 搜尋彈窗 -->
+    <div id="spotlight-modal" class="hidden fixed inset-0 z-[9600] flex items-start justify-center pt-24 px-4 bg-black/15" onclick="if(event.target === this) toggleSpotlight()">
+      <div class="glass-popover w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl border border-white/40">
+        <div class="flex items-center px-4 py-3 border-b border-gray-400/20">
+          <i class="ph-bold ph-magnifying-glass text-xl text-gray-500 dark:text-gray-300 mr-3"></i>
+          <input id="spotlight-input" type="text" placeholder="Spotlight 搜尋應用程式或檔案..." oninput="filterSpotlight(this.value)" class="w-full bg-transparent text-base outline-none text-gray-900 dark:text-white placeholder-gray-500" />
+        </div>
+        <div id="spotlight-results" class="p-2 max-h-64 overflow-y-auto space-y-1 text-sm">
+          <!-- 由 JS 動態填入 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 桌面區域與桌面圖示 -->
+    <main id="desktop-workspace" class="relative w-full h-full pt-7 pb-20 overflow-hidden" onclick="handleDesktopClick(event)">
+      <!-- 右上角/左側桌面捷徑圖示 -->
+      <div id="desktop-icons" class="p-4 flex flex-col flex-wrap content-start gap-4 h-full w-fit">
+        <!-- Macintosh HD -->
+        <div class="desktop-icon group w-20 flex flex-col items-center p-1.5 rounded-lg hover:bg-white/15 focus:bg-blue-500/40 cursor-pointer transition" onclick="handleIconSelect(this, event)" ondblclick="openApp('finder', { folder: 'applications' })">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-b from-gray-100 to-gray-300 dark:from-gray-600 dark:to-gray-800 shadow-md flex items-center justify-center border border-white/50">
+            <i class="ph-fill ph-hard-drives text-2xl text-gray-700 dark:text-gray-200"></i>
+          </div>
+          <span class="mt-1 text-[11px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] text-center leading-tight px-1 rounded">Macintosh HD</span>
+        </div>
+
+        <!-- 專案文件資料夾 -->
+        <div class="desktop-icon group w-20 flex flex-col items-center p-1.5 rounded-lg hover:bg-white/15 cursor-pointer transition" onclick="handleIconSelect(this, event)" ondblclick="openApp('finder', { folder: 'documents' })">
+          <div class="w-12 h-12 flex items-center justify-center">
+            <i class="ph-fill ph-folder text-5xl text-sky-400 drop-shadow-md"></i>
+          </div>
+          <span class="mt-0.5 text-[11px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] text-center leading-tight px-1 rounded">工作專案</span>
+        </div>
+
+        <!-- 備忘錄捷徑 -->
+        <div class="desktop-icon group w-20 flex flex-col items-center p-1.5 rounded-lg hover:bg-white/15 cursor-pointer transition" onclick="handleIconSelect(this, event)" ondblclick="openApp('notes')">
+          <div class="w-12 h-12 rounded-xl bg-white shadow-md flex flex-col overflow-hidden border border-gray-200">
+            <div class="h-3 bg-amber-400 w-full"></div>
+            <div class="flex-1 flex items-center justify-center">
+              <i class="ph-bold ph-note-pencil text-xl text-gray-700"></i>
+            </div>
+          </div>
+          <span class="mt-1 text-[11px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] text-center leading-tight px-1 rounded">待辦清單.txt</span>
+        </div>
+
+        <!-- 終端機捷徑 -->
+        <div class="desktop-icon group w-20 flex flex-col items-center p-1.5 rounded-lg hover:bg-white/15 cursor-pointer transition" onclick="handleIconSelect(this, event)" ondblclick="openApp('terminal')">
+          <div class="w-12 h-12 rounded-xl bg-gray-900 shadow-md flex items-center justify-center border border-gray-700">
+            <span class="text-emerald-400 font-mono font-bold text-sm">&gt;_</span>
+          </div>
+          <span class="mt-1 text-[11px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] text-center leading-tight px-1 rounded">終端機</span>
+        </div>
+      </div>
+
+      <!-- 動態視窗容器 -->
+      <div id="windows-container" class="absolute inset-0 pointer-events-none"></div>
+    </main>
+
+    <!-- 關於這台 Mac 彈出視窗 (自訂訊息框，取代 alert) -->
+    <div id="about-mac-modal" class="hidden fixed inset-0 z-[9700] flex items-center justify-center p-4 bg-black/30" onclick="if(event.target === this) this.classList.add('hidden')">
+      <div class="glass-window w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl relative">
+        <button onclick="document.getElementById('about-mac-modal').classList.add('hidden')" class="absolute top-3 left-3 w-3 h-3 rounded-full bg-red-500 hover:bg-red-600"></button>
+        <div class="w-20 h-20 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg text-white">
+          <i class="ph-fill ph-laptop text-4xl"></i>
+        </div>
+        <h2 class="text-lg font-bold">MacBook Pro</h2>
+        <p class="text-xs opacity-60 mb-4">16 吋，2026 年款</p>
+        <div class="text-xs space-y-1.5 text-left bg-black/5 dark:bg-white/5 p-3 rounded-xl mb-4">
+          <div class="flex justify-between"><span class="opacity-65">晶片</span><span class="font-medium">Apple M4 Max</span></div>
+          <div class="flex justify-between"><span class="opacity-65">記憶體</span><span class="font-medium">64 GB 統一記憶體</span></div>
+          <div class="flex justify-between"><span class="opacity-65">系統版本</span><span class="font-medium">macOS Sonoma 14.6</span></div>
+        </div>
+        <button onclick="document.getElementById('about-mac-modal').classList.add('hidden')" class="w-full py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition">好</button>
+      </div>
+    </div>
+
+    <!-- 睡眠黑屏遮罩 -->
+    <div id="sleep-overlay" onclick="this.classList.add('hidden')" class="hidden fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center text-white cursor-pointer">
+      <i class="ph-fill ph-moon-stars text-4xl mb-3 opacity-60"></i>
+      <p class="text-sm opacity-75">點擊螢幕任意處以喚醒 Mac</p>
+    </div>
+
+    <!-- 底部懸浮 Dock -->
+    <div class="fixed bottom-2 left-0 right-0 flex justify-center z-[8500] px-2 pointer-events-none">
+      <div id="dock-bar" class="glass-dock pointer-events-auto flex items-end px-2.5 py-1.5 rounded-2xl space-x-1.5 sm:space-x-2 max-w-full overflow-x-auto sm:overflow-visible">
+        <!-- Dock 圖示由 JS 渲染以支援動態指示點與放大特效 -->
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================================================
+       Google OAuth 2.0 與 Google Drive API 設定
+       ========================================================================== */
+    // 💡 提醒：請記得更換為您的 OAuth 2.0 用戶端 ID
+    const CLIENT_ID = '375971288943-097rhbub5h2d06f1g5lqs60in6pofj22.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/drive';
+    const DRIVE_BACKUP_FILENAME = 'macOS_Web_Notes_Backup.json';
+
+    let googleTokenClient = null;
+    let googleAccessToken = null;
+    let googleUserProfile = null;
+    let googleDriveFiles = [];
+    let isDriveLoading = false;
+    let driveSyncStatus = 'local'; // 'local' | 'syncing' | 'synced' | 'error'
+    let driveBackupFileId = null;
+
+    /* ==========================================================================
+       全域狀態與資料定義 (繁體中文)
+       ========================================================================== */
+    const APPS = {
+      finder: {
+        id: 'finder',
+        name: 'Finder',
+        iconBg: 'bg-gradient-to-b from-sky-400 to-blue-600',
+        iconHtml: '<i class="ph-bold ph-smiley text-white text-2xl sm:text-3xl"></i>',
+        defaultWidth: 720,
+        defaultHeight: 460
+      },
+      safari: {
+        id: 'safari',
+        name: 'Safari',
+        iconBg: 'bg-gradient-to-b from-blue-400 to-indigo-600',
+        iconHtml: '<i class="ph-fill ph-compass text-white text-2xl sm:text-3xl"></i>',
+        defaultWidth: 800,
+        defaultHeight: 520
+      },
+      notes: {
+        id: 'notes',
+        name: '備忘錄',
+        iconBg: 'bg-gradient-to-b from-amber-300 to-amber-500',
+        iconHtml: '<i class="ph-fill ph-note-pencil text-white text-2xl sm:text-3xl"></i>',
+        defaultWidth: 680,
+        defaultHeight: 450
+      },
+      calculator: {
+        id: 'calculator',
+        name: '計算機',
+        iconBg: 'bg-gradient-to-b from-gray-700 to-gray-900',
+        iconHtml: '<i class="ph-fill ph-calculator text-orange-400 text-2xl sm:text-3xl"></i>',
+        defaultWidth: 270,
+        defaultHeight: 410
+      },
+      terminal: {
+        id: 'terminal',
+        name: '終端機',
+        iconBg: 'bg-gradient-to-b from-zinc-800 to-black',
+        iconHtml: '<span class="text-emerald-400 font-mono font-bold text-lg sm:text-xl">&gt;_</span>',
+        defaultWidth: 600,
+        defaultHeight: 390
+      },
+      settings: {
+        id: 'settings',
+        name: '系統設定',
+        iconBg: 'bg-gradient-to-b from-slate-400 to-slate-600',
+        iconHtml: '<i class="ph-fill ph-gear text-white text-2xl sm:text-3xl"></i>',
+        defaultWidth: 640,
+        defaultHeight: 440
+      },
+      trash: {
+        id: 'trash',
+        name: '垃圾桶',
+        iconBg: 'bg-gradient-to-b from-gray-200 to-gray-400',
+        iconHtml: '<i class="ph-fill ph-trash text-gray-700 text-2xl sm:text-3xl"></i>',
+        defaultWidth: 520,
+        defaultHeight: 360
+      }
+    };
+
+    // Finder 模擬檔案系統資料
+    const FINDER_DATA = {
+      airdrop: {
+        title: 'AirDrop',
+        items: [
+          { name: '附近的 iPhone 16 Pro', type: 'device', icon: 'ph-device-mobile', color: 'text-blue-500', size: '準備就緒', date: '剛剛' },
+          { name: '設計團隊的 iPad Pro', type: 'device', icon: 'ph-device-tablet', color: 'text-indigo-500', size: '準備就緒', date: '2 分鐘前' }
+        ]
+      },
+      recents: {
+        title: '最近項目',
+        items: [
+          { name: '2026_年度產品規劃簡報.key', type: 'file', icon: 'ph-presentation-chart', color: 'text-blue-500', size: '18.4 MB', date: '今天 10:30' },
+          { name: 'UI_設計系統規範_v2.fig', type: 'file', icon: 'ph-pen-nib', color: 'text-purple-500', size: '42.1 MB', date: '昨天 16:45' },
+          { name: '財務報表摘要.xlsx', type: 'file', icon: 'ph-table', color: 'text-emerald-500', size: '1.2 MB', date: '11月15日' },
+          { name: '桌面截圖_2026.png', type: 'image', icon: 'ph-image', color: 'text-pink-500', size: '3.8 MB', date: '11月12日' }
+        ]
+      },
+      applications: {
+        title: '應用程式',
+        items: [
+          { name: 'Safari.app', type: 'app', appId: 'safari', icon: 'ph-compass', color: 'text-blue-500', size: '145 MB', date: '系統內建' },
+          { name: '備忘錄.app', type: 'app', appId: 'notes', icon: 'ph-note-pencil', color: 'text-amber-500', size: '48 MB', date: '系統內建' },
+          { name: '計算機.app', type: 'app', appId: 'calculator', icon: 'ph-calculator', color: 'text-orange-500', size: '12 MB', date: '系統內建' },
+          { name: '終端機.app', type: 'app', appId: 'terminal', icon: 'ph-terminal-window', color: 'text-gray-700 dark:text-gray-200', size: '24 MB', date: '系統內建' },
+          { name: '系統設定.app', type: 'app', appId: 'settings', icon: 'ph-gear', color: 'text-slate-500', size: '86 MB', date: '系統內建' }
+        ]
+      },
+      desktop: {
+        title: '桌面',
+        items: [
+          { name: '工作專案', type: 'folder', targetFolder: 'documents', icon: 'ph-folder', color: 'text-sky-400', size: '4 個項目', date: '今天 09:15' },
+          { name: '待辦清單.txt', type: 'app', appId: 'notes', icon: 'ph-file-text', color: 'text-gray-500', size: '4 KB', date: '今天 11:02' }
+        ]
+      },
+      documents: {
+        title: '文件',
+        items: [
+          { name: '專案企劃書.pdf', type: 'file', icon: 'ph-file-pdf', color: 'text-red-500', size: '5.6 MB', date: '11月10日' },
+          { name: '系統架構圖.png', type: 'file', icon: 'ph-image', color: 'text-teal-500', size: '2.9 MB', date: '11月08日' },
+          { name: '會議紀錄彙整', type: 'folder', targetFolder: 'recents', icon: 'ph-folder', color: 'text-sky-400', size: '12 個項目', date: '11月01日' },
+          { name: '前端開發指南.md', type: 'file', icon: 'ph-file-code', color: 'text-indigo-500', size: '128 KB', date: '10月28日' }
+        ]
+      },
+      downloads: {
+        title: '下載項目',
+        items: [
+          { name: 'macOS_Sonoma_桌布包.zip', type: 'file', icon: 'ph-file-zip', color: 'text-amber-600', size: '256 MB', date: '昨天 21:10' },
+          { name: 'Tailwind_速查表.pdf', type: 'file', icon: 'ph-file-pdf', color: 'text-red-500', size: '1.8 MB', date: '11月14日' }
+        ]
+      },
+      trash: {
+        title: '垃圾桶',
+        items: [
+          { name: '舊版草稿_backup.doc', type: 'file', icon: 'ph-file-doc', color: 'text-gray-400', size: '420 KB', date: '已刪除' },
+          { name: '暫存測試檔案.tmp', type: 'file', icon: 'ph-file', color: 'text-gray-400', size: '16 KB', date: '已刪除' }
+        ]
+      }
+    };
+
+    // 視窗管理狀態
+    let openWindows = {}; // { appId: { id, title, x, y, width, height, zIndex, minimized, maximized, prevRect } }
+    let highestZIndex = 100;
+    let activeAppId = 'finder';
+    let currentWallpaper = 'wallpaper-sonoma';
+    let isDarkMode = false;
+
+    // 備忘錄狀態 (支援 localStorage)
+    let notesData = [];
+    let activeNoteId = null;
+
+    // 計算機狀態
+    let calcState = {
+      display: '0',
+      prevValue: null,
+      operator: null,
+      waitingForOperand: false
+    };
+
+    // 終端機歷史紀錄
+    let terminalHistory = [
+      { type: 'system', text: 'Last login: Wed Nov 18 12:00:00 on ttys000' },
+      { type: 'system', text: '歡迎使用 macOS 終端機！輸入 "help" 查看可用指令（支援 gdrive 雲端狀態查詢）。' }
+    ];
+
+    /* ==========================================================================
+       初始化、Google GIS 初始化與時鐘更新
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      initNotesData();
+      renderDock();
+      updateClock();
+      setInterval(updateClock, 1000);
+      filterSpotlight('');
+
+      // 顯示目前網頁來源網址供 GitHub Pages OAuth 設定參考
+      const originEl = document.getElementById('current-origin-display');
+      if (originEl) {
+        originEl.textContent = window.location.origin;
+      }
+
+      // 嘗試恢復已儲存的 Google 登入工作階段（若尚未過期）
+      restoreGoogleSession();
+      initGoogleIdentityServices();
+
+      // 預設開啟一個歡迎 Finder 視窗
+      setTimeout(() => {
+        openApp('finder', { folder: 'recents' });
+      }, 250);
+    });
+
+    function initGoogleIdentityServices() {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              googleAccessToken = tokenResponse.access_token;
+              const expiresAt = Date.now() + (Number(tokenResponse.expires_in || 3500) * 1000);
+              sessionStorage.setItem('macos_google_token', googleAccessToken);
+              sessionStorage.setItem('macos_google_token_exp', String(expiresAt));
+
+              showSystemToast('已成功驗證 Google 帳號，正在同步雲端資料...');
+              await fetchGoogleUserInfo();
+              updateGoogleAuthUI();
+              await Promise.all([
+                fetchGoogleDriveFiles(),
+                syncNotesWithGoogleDrive()
+              ]);
+            }
+          },
+          error_callback: (err) => {
+            console.warn('Google OAuth 錯誤:', err);
+            showSystemToast('Google 登入已取消或網域尚未授權，已切換為本機模式。');
+          }
+        });
+      } else {
+        // 若 GIS 腳本仍在非同步載入中，稍後重試
+        setTimeout(initGoogleIdentityServices, 600);
+      }
+    }
+
+    function restoreGoogleSession() {
+      const savedToken = sessionStorage.getItem('macos_google_token');
+      const savedExp = Number(sessionStorage.getItem('macos_google_token_exp') || 0);
+      if (savedToken && savedExp > Date.now()) {
+        googleAccessToken = savedToken;
+        fetchGoogleUserInfo().then(() => {
+          updateGoogleAuthUI();
+          fetchGoogleDriveFiles();
+          syncNotesWithGoogleDrive();
+        });
+      }
+    }
+
+    function handleGoogleSignIn() {
+      if (!googleTokenClient) {
+        initGoogleIdentityServices();
+      }
+      if (googleTokenClient) {
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+      } else {
+        showSystemToast('Google 驗證模組載入中，請稍候再試或檢查網路連線。');
+      }
+    }
+
+    function handleGoogleSignOut() {
+      if (googleAccessToken && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        google.accounts.oauth2.revoke(googleAccessToken, () => {});
+      }
+      googleAccessToken = null;
+      googleUserProfile = null;
+      googleDriveFiles = [];
+      driveBackupFileId = null;
+      driveSyncStatus = 'local';
+      sessionStorage.removeItem('macos_google_token');
+      sessionStorage.removeItem('macos_google_token_exp');
+
+      updateGoogleAuthUI();
+      if (currentFinderFolder === 'gdrive') {
+        switchFinderFolder('gdrive');
+      }
+      renderNotesApp();
+      showSystemToast('已登出 Google 帳號，已切換為本機儲存模式。');
+    }
+
+    async function fetchGoogleUserInfo() {
+      if (!googleAccessToken) return;
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+        if (res.ok) {
+          googleUserProfile = await res.json();
+        } else if (res.status === 401) {
+          handleGoogleSignOut();
+        }
+      } catch (e) {
+        console.error('取得 Google 使用者資訊失敗:', e);
+      }
+    }
+
+    function updateGoogleAuthUI() {
+      const dot = document.getElementById('menubar-google-dot');
+      const nameEl = document.getElementById('google-user-name');
+      const emailEl = document.getElementById('google-user-email');
+      const badgeEl = document.getElementById('google-status-badge');
+      const avatarBox = document.getElementById('google-avatar-box');
+      const actionsEl = document.getElementById('google-auth-actions');
+
+      if (googleAccessToken) {
+        if (dot) {
+          dot.classList.remove('bg-gray-400');
+          dot.classList.add('bg-emerald-500');
+        }
+        if (nameEl) nameEl.textContent = googleUserProfile?.name || 'Google 雲端使用者';
+        if (emailEl) emailEl.textContent = googleUserProfile?.email || '已連結 Google Drive API';
+        if (badgeEl) {
+          badgeEl.textContent = '已連線雲端';
+          badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-300';
+        }
+        if (avatarBox && googleUserProfile?.picture) {
+          avatarBox.innerHTML = `<img src="${googleUserProfile.picture}" alt="頭像" class="w-full h-full rounded-full object-cover" onerror="this.parentElement.innerHTML='<i class=\\'ph-bold ph-google-logo\\'></i>'">`;
+        }
+        if (actionsEl) {
+          actionsEl.innerHTML = `
+            <button onclick="openApp('finder', { folder: 'gdrive' }); closeAllPopovers();" class="w-full py-1.5 px-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium flex items-center justify-center space-x-1.5 transition">
+              <i class="ph-bold ph-google-drive-logo"></i>
+              <span>開啟 Google 雲端硬碟</span>
+            </button>
+            <button onclick="syncNotesWithGoogleDrive(true)" class="w-full py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 font-medium flex items-center justify-center space-x-1.5 transition">
+              <i class="ph-bold ph-arrows-clockwise"></i>
+              <span>立即同步備忘錄至雲端</span>
+            </button>
+            <button onclick="exportAllLocalData()" class="w-full py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 font-medium flex items-center justify-center space-x-1.5 transition">
+              <i class="ph-bold ph-download-simple"></i>
+              <span>匯出本機備份 (.json)</span>
+            </button>
+            <button onclick="handleGoogleSignOut()" class="w-full py-1.5 px-3 rounded-xl text-red-500 hover:bg-red-500/10 font-medium flex items-center justify-center space-x-1.5 transition">
+              <i class="ph-bold ph-sign-out"></i>
+              <span>登出 Google 帳號</span>
+            </button>
+          `;
+        }
+      } else {
+        if (dot) {
+          dot.classList.remove('bg-emerald-500');
+          dot.classList.add('bg-gray-400');
+        }
+        if (nameEl) nameEl.textContent = '尚未登入 Google 帳號';
+        if (emailEl) emailEl.textContent = '目前使用本機 LocalStorage 模式';
+        if (badgeEl) {
+          badgeEl.textContent = '離線本機';
+          badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-500/15 text-gray-600 dark:text-gray-300';
+        }
+        if (avatarBox) {
+          avatarBox.innerHTML = `<i class="ph-bold ph-google-logo"></i>`;
+        }
+        if (actionsEl) {
+          actionsEl.innerHTML = `
+            <button onclick="handleGoogleSignIn()" class="w-full py-2 px-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold flex items-center justify-center space-x-2 shadow-sm transition">
+              <i class="ph-bold ph-google-logo"></i>
+              <span>登入 Google 帳號並連接 Drive</span>
+            </button>
+            <button onclick="exportAllLocalData()" class="w-full py-1.5 px-3 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 font-medium flex items-center justify-center space-x-1.5 transition">
+              <i class="ph-bold ph-download-simple"></i>
+              <span>匯出本機資料備份 (.json)</span>
+            </button>
+          `;
+        }
+      }
+
+      // 若系統設定視窗正開啟中，同步更新其畫面
+      const settingsBody = document.getElementById('window-body-settings');
+      if (settingsBody) {
+        settingsBody.innerHTML = buildSettingsHTML();
+      }
+    }
+
+    // 通用底部懸浮通知氣泡
+    function showSystemToast(message) {
+      const existing = document.getElementById('macos-system-toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.id = 'macos-system-toast';
+      toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 glass-popover px-4 py-2 rounded-full text-xs font-medium shadow-xl z-[9999] flex items-center space-x-2 transition-opacity';
+      toast.innerHTML = `<i class="ph-fill ph-check-circle text-blue-500 text-sm"></i><span>${escapeHTML(message)}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    // 即時繁體中文日期與時鐘
+    function updateClock() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+      const weekday = weekdays[now.getDay()];
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const period = hours >= 12 ? '下午' : '上午';
+      hours = hours % 12 || 12;
+
+      const clockEl = document.getElementById('menubar-clock');
+      if (clockEl) {
+        clockEl.textContent = `${month}月${date}日 ${weekday} ${period}${hours}:${minutes}`;
+      }
+    }
+
+    /* ==========================================================================
+       Dock 渲染與互動放大效果
+       ========================================================================== */
+    function renderDock() {
+      const dockBar = document.getElementById('dock-bar');
+      const dockOrder = ['finder', 'safari', 'notes', 'calculator', 'terminal', 'settings', 'trash'];
+      
+      dockBar.innerHTML = dockOrder.map((appId, index) => {
+        const app = APPS[appId];
+        const isOpen = !!openWindows[appId];
+        const divider = appId === 'trash' ? `<div class="w-[1px] h-8 bg-gray-500/30 mx-1 self-center shrink-0"></div>` : '';
+        
+        return `
+          ${divider}
+          <div class="dock-item-wrapper relative flex flex-col items-center group shrink-0" data-app="${appId}">
+            <!-- 懸停提示標籤 -->
+            <div class="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -top-9 px-2.5 py-0.5 rounded-md glass-popover text-[11px] font-medium whitespace-nowrap shadow-md">
+              ${app.name}
+            </div>
+            <!-- App 圖示按鈕 -->
+            <button 
+              onclick="handleDockClick('${appId}', this)"
+              class="dock-item w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${app.iconBg} shadow-lg flex items-center justify-center border border-white/30 active:scale-95 focus:outline-none">
+              ${app.iconHtml}
+            </button>
+            <!-- 開啟狀態指示點 -->
+            <div class="w-1 h-1 rounded-full mt-1 transition-opacity ${isOpen ? 'bg-gray-800 dark:bg-white opacity-90' : 'opacity-0'}"></div>
+          </div>
+        `;
+      }).join('');
+
+      setupDockMagnification();
+    }
+
+    function setupDockMagnification() {
+      const dockBar = document.getElementById('dock-bar');
+      const items = dockBar.querySelectorAll('.dock-item');
+
+      dockBar.addEventListener('mousemove', (e) => {
+        if (window.innerWidth < 640) return; // 手機版停用滑鼠放大位移
+        items.forEach(item => {
+          const rect = item.getBoundingClientRect();
+          const itemCenterX = rect.left + rect.width / 2;
+          const distance = Math.abs(e.clientX - itemCenterX);
+          const maxDistance = 120;
+
+          if (distance < maxDistance) {
+            const scale = 1 + (1 - distance / maxDistance) * 0.42;
+            const translateY = -(scale - 1) * 18;
+            item.style.transform = `translateY(${translateY}px) scale(${scale})`;
+            item.style.marginLeft = `${(scale - 1) * 10}px`;
+            item.style.marginRight = `${(scale - 1) * 10}px`;
+          } else {
+            item.style.transform = 'translateY(0) scale(1)';
+            item.style.marginLeft = '0px';
+            item.style.marginRight = '0px';
+          }
+        });
+      });
+
+      dockBar.addEventListener('mouseleave', () => {
+        items.forEach(item => {
+          item.style.transform = 'translateY(0) scale(1)';
+          item.style.marginLeft = '0px';
+          item.style.marginRight = '0px';
+        });
+      });
+    }
+
+    function handleDockClick(appId, btnEl) {
+      if (btnEl) {
+        btnEl.classList.remove('dock-bounce');
+        void btnEl.offsetWidth;
+        btnEl.classList.add('dock-bounce');
+      }
+      openApp(appId);
+    }
+
+    /* ==========================================================================
+       視窗管理系統 (開啟、聚焦、拖曳、縮放、最小化、最大化、關閉)
+       ========================================================================== */
+    function openApp(appId, options = {}) {
+      const app = APPS[appId];
+      if (!app) return;
+
+      closeAllPopovers();
+
+      // 若視窗已存在，則取消最小化並聚焦
+      if (openWindows[appId]) {
+        const winState = openWindows[appId];
+        winState.minimized = false;
+        const winEl = document.getElementById(`window-${appId}`);
+        if (winEl) {
+          winEl.classList.remove('hidden');
+          focusWindow(appId);
+          if (appId === 'finder' && options.folder) {
+            switchFinderFolder(options.folder);
+          }
+        }
+        renderDock();
+        return;
+      }
+
+      // 計算響應式視窗初始位置與大小
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const isMobile = vw < 640;
+
+      const width = isMobile ? vw - 20 : Math.min(app.defaultWidth, vw - 48);
+      const height = isMobile ? vh - 125 : Math.min(app.defaultHeight, vh - 130);
+
+      // 階梯式錯開視窗位置
+      const offsetCount = Object.keys(openWindows).length % 5;
+      const x = isMobile ? 10 : Math.max(24, Math.min((vw - width) / 2 + offsetCount * 24, vw - width - 20));
+      const y = isMobile ? 38 : Math.max(42, Math.min((vh - height) / 2 - 20 + offsetCount * 22, vh - height - 85));
+
+      highestZIndex++;
+      openWindows[appId] = {
+        id: appId,
+        title: app.name,
+        x,
+        y,
+        width,
+        height,
+        zIndex: highestZIndex,
+        minimized: false,
+        maximized: isMobile, // 手機版預設自適應最大化體驗
+        prevRect: { x, y, width, height }
+      };
+
+      createWindowElement(appId, options);
+      focusWindow(appId);
+      renderDock();
+    }
+
+    function createWindowElement(appId, options = {}) {
+      const container = document.getElementById('windows-container');
+      const winState = openWindows[appId];
+      const app = APPS[appId];
+
+      const winEl = document.createElement('div');
+      winEl.id = `window-${appId}`;
+      winEl.className = 'glass-window pointer-events-auto absolute rounded-xl overflow-hidden flex flex-col window-animate-in transition-shadow duration-150';
+      winEl.style.left = `${winState.x}px`;
+      winEl.style.top = `${winState.y}px`;
+      winEl.style.width = `${winState.width}px`;
+      winEl.style.height = `${winState.height}px`;
+      winEl.style.zIndex = winState.zIndex;
+
+      winEl.addEventListener('mousedown', () => focusWindow(appId));
+      winEl.addEventListener('touchstart', () => focusWindow(appId), { passive: true });
+
+      winEl.innerHTML = `
+        <!-- 視窗標題列 (可拖曳) -->
+        <div id="titlebar-${appId}" class="h-10 px-3.5 flex items-center justify-between border-b border-gray-400/20 bg-white/30 dark:bg-black/20 shrink-0 cursor-grab active:cursor-grabbing" ondblclick="toggleMaximizeWindow('${appId}')">
+          <!-- 交通燈控制按鈕 -->
+          <div class="traffic-lights flex items-center space-x-2 z-10">
+            <button onclick="closeWindow('${appId}', event)" title="關閉" class="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e] flex items-center justify-center text-[8px] text-black/70">
+              <span class="traffic-icon opacity-0 font-bold">✕</span>
+            </button>
+            <button onclick="minimizeWindow('${appId}', event)" title="縮到最小" class="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123] flex items-center justify-center text-[8px] text-black/70">
+              <span class="traffic-icon opacity-0 font-bold">−</span>
+            </button>
+            <button onclick="toggleMaximizeWindow('${appId}', event)" title="全螢幕 / 縮放" class="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29] flex items-center justify-center text-[8px] text-black/70">
+              <span class="traffic-icon opacity-0 font-bold">+</span>
+            </button>
+          </div>
+
+          <!-- 視窗標題 -->
+          <div class="absolute inset-x-0 text-center pointer-events-none">
+            <span id="window-title-${appId}" class="text-xs font-semibold text-gray-800 dark:text-gray-100">${app.name}</span>
+          </div>
+
+          <div class="w-12"></div>
+        </div>
+
+        <!-- 應用程式內容區 -->
+        <div id="window-body-${appId}" class="flex-1 overflow-hidden relative flex flex-col">
+          ${renderAppContent(appId, options)}
+        </div>
+
+        <!-- 右下角縮放控制手把 -->
+        <div id="resize-${appId}" class="resize-handle" title="調整視窗大小"></div>
+      `;
+
+      container.appendChild(winEl);
+      setupWindowDragAndResize(appId);
+
+      // 特定 App 初始化掛載
+      if (appId === 'notes') renderNotesApp();
+      if (appId === 'terminal') scrollTerminalToBottom();
+    }
+
+    function focusWindow(appId) {
+      if (!openWindows[appId]) return;
+      highestZIndex++;
+      openWindows[appId].zIndex = highestZIndex;
+      activeAppId = appId;
+
+      const winEl = document.getElementById(`window-${appId}`);
+      if (winEl) {
+        winEl.style.zIndex = highestZIndex;
+      }
+
+      // 更新頂部選單列的應用程式名稱
+      const activeAppNameEl = document.getElementById('active-app-name');
+      if (activeAppNameEl && APPS[appId]) {
+        activeAppNameEl.textContent = APPS[appId].name;
+      }
+    }
+
+    function closeWindow(appId, e) {
+      if (e) e.stopPropagation();
+      const winEl = document.getElementById(`window-${appId}`);
+      if (winEl) {
+        winEl.remove();
+      }
+      delete openWindows[appId];
+
+      // 切換聚焦到最上層的剩餘視窗
+      const remaining = Object.values(openWindows).filter(w => !w.minimized);
+      if (remaining.length > 0) {
+        remaining.sort((a, b) => b.zIndex - a.zIndex);
+        focusWindow(remaining[0].id);
+      } else {
+        document.getElementById('active-app-name').textContent = 'Finder';
+      }
+      renderDock();
+    }
+
+    function minimizeWindow(appId, e) {
+      if (e) e.stopPropagation();
+      const winState = openWindows[appId];
+      if (!winState) return;
+      winState.minimized = true;
+      const winEl = document.getElementById(`window-${appId}`);
+      if (winEl) {
+        winEl.classList.add('hidden');
+      }
+      renderDock();
+    }
+
+    function minimizeAllWindows() {
+      Object.keys(openWindows).forEach(appId => minimizeWindow(appId));
+    }
+
+    function toggleMaximizeWindow(appId, e) {
+      if (e) e.stopPropagation();
+      const winState = openWindows[appId];
+      const winEl = document.getElementById(`window-${appId}`);
+      if (!winState || !winEl) return;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      if (!winState.maximized) {
+        winState.prevRect = {
+          x: winState.x,
+          y: winState.y,
+          width: winState.width,
+          height: winState.height
+        };
+        winState.x = 8;
+        winState.y = 34;
+        winState.width = vw - 16;
+        winState.height = vh - 115;
+        winState.maximized = true;
+      } else {
+        winState.x = winState.prevRect.x;
+        winState.y = winState.prevRect.y;
+        winState.width = Math.min(winState.prevRect.width, vw - 16);
+        winState.height = Math.min(winState.prevRect.height, vh - 115);
+        winState.maximized = false;
+      }
+
+      winEl.style.left = `${winState.x}px`;
+      winEl.style.top = `${winState.y}px`;
+      winEl.style.width = `${winState.width}px`;
+      winEl.style.height = `${winState.height}px`;
+    }
+
+    // 支援滑鼠與觸控的視窗拖曳及縮放
+    function setupWindowDragAndResize(appId) {
+      const winEl = document.getElementById(`window-${appId}`);
+      const titlebar = document.getElementById(`titlebar-${appId}`);
+      const resizeHandle = document.getElementById(`resize-${appId}`);
+      const winState = openWindows[appId];
+
+      let isDragging = false;
+      let isResizing = false;
+      let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+      const getClientCoords = (e) => {
+        if (e.touches && e.touches.length > 0) {
+          return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+      };
+
+      // 開始拖曳
+      const onDragStart = (e) => {
+        if (e.target.closest('button')) return;
+        isDragging = true;
+        focusWindow(appId);
+        const coords = getClientCoords(e);
+        startX = coords.x;
+        startY = coords.y;
+        startLeft = winState.x;
+        startTop = winState.y;
+      };
+
+      // 開始縮放
+      const onResizeStart = (e) => {
+        e.stopPropagation();
+        isResizing = true;
+        focusWindow(appId);
+        const coords = getClientCoords(e);
+        startX = coords.x;
+        startY = coords.y;
+        startWidth = winState.width;
+        startHeight = winState.height;
+      };
+
+      const onMove = (e) => {
+        if (!isDragging && !isResizing) return;
+        const coords = getClientCoords(e);
+        const dx = coords.x - startX;
+        const dy = coords.y - startY;
+
+        if (isDragging) {
+          const newX = Math.max(-winState.width + 80, Math.min(startLeft + dx, window.innerWidth - 80));
+          const newY = Math.max(28, Math.min(startTop + dy, window.innerHeight - 90));
+          winState.x = newX;
+          winState.y = newY;
+          winState.maximized = false;
+          winEl.style.left = `${newX}px`;
+          winEl.style.top = `${newY}px`;
+        }
+
+        if (isResizing) {
+          const newW = Math.max(250, Math.min(startWidth + dx, window.innerWidth - winState.x - 8));
+          const newH = Math.max(220, Math.min(startHeight + dy, window.innerHeight - winState.y - 80));
+          winState.width = newW;
+          winState.height = newH;
+          winState.maximized = false;
+          winEl.style.width = `${newW}px`;
+          winEl.style.height = `${newH}px`;
+        }
+      };
+
+      const onEnd = () => {
+        isDragging = false;
+        isResizing = false;
+      };
+
+      titlebar.addEventListener('mousedown', onDragStart);
+      titlebar.addEventListener('touchstart', onDragStart, { passive: true });
+      resizeHandle.addEventListener('mousedown', onResizeStart);
+      resizeHandle.addEventListener('touchstart', onResizeStart, { passive: true });
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove', onMove, { passive: true });
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchend', onEnd);
+    }
+
+    /* ==========================================================================
+       各個內建應用程式介面與互動邏輯
+       ========================================================================== */
+    function renderAppContent(appId, options = {}) {
+      switch (appId) {
+        case 'finder':
+          return buildFinderHTML(options.folder || 'recents');
+        case 'safari':
+          return buildSafariHTML();
+        case 'notes':
+          return buildNotesHTML();
+        case 'calculator':
+          return buildCalculatorHTML();
+        case 'terminal':
+          return buildTerminalHTML();
+        case 'settings':
+          return buildSettingsHTML();
+        case 'trash':
+          return buildFinderHTML('trash', true);
+        default:
+          return `<div class="p-6 text-sm">應用程式載入中...</div>`;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       1. Finder 檔案總管 (支援本地資料夾與 Google 雲端硬碟 API)
+       -------------------------------------------------------------------------- */
+    let currentFinderFolder = 'recents';
+    let finderViewMode = 'grid'; // 'grid' 或 'list'
+
+    function buildFinderHTML(initialFolder = 'recents', isTrash = false) {
+      currentFinderFolder = initialFolder;
+      const sidebarItems = [
+        { id: 'airdrop', label: 'AirDrop', icon: 'ph-broadcast' },
+        { id: 'recents', label: '最近項目', icon: 'ph-clock' },
+        { id: 'applications', label: '應用程式', icon: 'ph-app-store-logo' },
+        { id: 'desktop', label: '桌面', icon: 'ph-desktop' },
+        { id: 'documents', label: '文件', icon: 'ph-file-text' },
+        { id: 'downloads', label: '下載項目', icon: 'ph-arrow-circle-down' },
+        { id: 'trash', label: '垃圾桶', icon: 'ph-trash' }
+      ];
+
+      const folderTitle = currentFinderFolder === 'gdrive'
+        ? 'Google 雲端硬碟'
+        : (FINDER_DATA[currentFinderFolder]?.title || '最近項目');
+
+      return `
+        <div class="flex h-full text-xs">
+          <!-- 側邊欄 -->
+          <aside class="w-36 sm:w-44 bg-black/5 dark:bg-white/5 border-r border-gray-400/20 p-2.5 flex flex-col justify-between shrink-0 overflow-y-auto">
+            <div class="space-y-3">
+              <div>
+                <div class="text-[10px] font-bold opacity-50 px-2 mb-1.5">喜好項目</div>
+                <nav class="space-y-0.5">
+                  ${sidebarItems.map(item => `
+                    <button onclick="switchFinderFolder('${item.id}')" data-finder-nav="${item.id}" class="finder-nav-btn w-full flex items-center space-x-2 px-2 py-1.5 rounded-lg transition text-left ${currentFinderFolder === item.id ? 'bg-blue-500 text-white font-medium' : 'hover:bg-black/5 dark:hover:bg-white/10'}">
+                      <i class="ph-bold ${item.icon} text-sm ${currentFinderFolder === item.id ? 'text-white' : 'text-blue-500'}"></i>
+                      <span class="truncate">${item.label}</span>
+                    </button>
+                  `).join('')}
+                </nav>
+              </div>
+
+              <!-- 雲端硬碟分類 -->
+              <div>
+                <div class="text-[10px] font-bold opacity-50 px-2 mb-1.5">雲端位置</div>
+                <button onclick="switchFinderFolder('gdrive')" data-finder-nav="gdrive" class="finder-nav-btn w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition text-left ${currentFinderFolder === 'gdrive' ? 'bg-blue-500 text-white font-medium' : 'hover:bg-black/5 dark:hover:bg-white/10'}">
+                  <div class="flex items-center space-x-2 truncate">
+                    <i class="ph-bold ph-google-drive-logo text-sm ${currentFinderFolder === 'gdrive' ? 'text-white' : 'text-emerald-500'}"></i>
+                    <span class="truncate">Google Drive</span>
+                  </div>
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0 ${googleAccessToken ? 'bg-emerald-400' : 'bg-gray-400'}"></span>
+                </button>
+              </div>
+            </div>
+            <div class="text-[10px] opacity-50 px-2 pt-2 border-t border-gray-400/20">
+              ${googleAccessToken ? '雲端硬碟已連線' : '本機儲存空間：412.8 GB'}
+            </div>
+          </aside>
+
+          <!-- 主內容區 -->
+          <div class="flex-1 flex flex-col overflow-hidden bg-white/40 dark:bg-transparent">
+            <!-- 工具列 -->
+            <div class="h-9 px-3 border-b border-gray-400/20 flex items-center justify-between shrink-0">
+              <div class="flex items-center space-x-2">
+                <span id="finder-breadcrumb" class="font-semibold text-sm">${folderTitle}</span>
+                ${currentFinderFolder === 'gdrive' && googleAccessToken ? `
+                  <button onclick="fetchGoogleDriveFiles(true)" class="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition" title="重新整理雲端檔案">
+                    <i class="ph-bold ph-arrow-clockwise text-xs"></i>
+                  </button>
+                ` : ''}
+              </div>
+              <div class="flex items-center space-x-1 bg-black/5 dark:bg-white/10 p-0.5 rounded-lg">
+                <button onclick="setFinderViewMode('grid')" class="px-2 py-1 rounded-md transition ${finderViewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'opacity-60'}" title="圖像顯示">
+                  <i class="ph-bold ph-squares-four"></i>
+                </button>
+                <button onclick="setFinderViewMode('list')" class="px-2 py-1 rounded-md transition ${finderViewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : 'opacity-60'}" title="列表顯示">
+                  <i class="ph-bold ph-list-bullets"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 檔案清單容器 -->
+            <div id="finder-content-area" class="flex-1 p-3 overflow-y-auto">
+              ${renderFinderItems(currentFinderFolder)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchGoogleDriveFiles(showToast = false) {
+      if (!googleAccessToken) return;
+      isDriveLoading = true;
+      if (currentFinderFolder === 'gdrive') {
+        const area = document.getElementById('finder-content-area');
+        if (area) area.innerHTML = renderFinderItems('gdrive');
+      }
+
+      try {
+        const queryParams = new URLSearchParams({
+          pageSize: '30',
+          fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink)',
+          orderBy: 'folder,modifiedTime desc',
+          q: 'trashed = false'
+        });
+
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files?${queryParams.toString()}`, {
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+
+        if (res.status === 401) {
+          handleGoogleSignOut();
+          return;
+        }
+
+        const data = await res.json();
+        googleDriveFiles = (data.files || []).map(f => {
+          const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
+          const isSheet = f.mimeType.includes('spreadsheet');
+          const isDoc = f.mimeType.includes('document') || f.mimeType.includes('pdf');
+          const isImage = f.mimeType.includes('image');
+
+          let icon = 'ph-file';
+          let color = 'text-blue-500';
+          if (isFolder) { icon = 'ph-folder'; color = 'text-sky-400'; }
+          else if (isSheet) { icon = 'ph-table'; color = 'text-emerald-500'; }
+          else if (isDoc) { icon = 'ph-file-text'; color = 'text-indigo-500'; }
+          else if (isImage) { icon = 'ph-image'; color = 'text-pink-500'; }
+
+          const sizeStr = f.size ? `${(Number(f.size) / 1024).toFixed(1)} KB` : (isFolder ? '資料夾' : '雲端文件');
+          const dateStr = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('zh-TW') : '近期';
+
+          return {
+            id: f.id,
+            name: f.name,
+            type: 'gdrive-file',
+            webViewLink: f.webViewLink,
+            icon,
+            color,
+            size: sizeStr,
+            date: dateStr
+          };
+        });
+
+        if (showToast) {
+          showSystemToast(`已從 Google Drive 載入 ${googleDriveFiles.length} 個項目`);
+        }
+      } catch (err) {
+        console.error('讀取 Google Drive 失敗:', err);
+        showSystemToast('讀取 Google Drive 失敗，請檢查網路或 API 權限。');
+      } finally {
+        isDriveLoading = false;
+        if (currentFinderFolder === 'gdrive') {
+          const area = document.getElementById('finder-content-area');
+          if (area) area.innerHTML = renderFinderItems('gdrive');
+        }
+      }
+    }
+
+    function renderFinderItems(folderKey) {
+      // Google 雲端硬碟專屬畫面
+      if (folderKey === 'gdrive') {
+        if (!googleAccessToken) {
+          return `
+            <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+                <i class="ph-fill ph-google-drive-logo text-3xl"></i>
+              </div>
+              <h3 class="text-sm font-bold">尚未連接 Google 雲端硬碟</h3>
+              <p class="text-xs opacity-70 max-w-xs leading-relaxed">登入您的 Google 帳號後，即可直接在 Finder 中瀏覽雲端檔案並自動同步備忘錄。</p>
+              <button onclick="handleGoogleSignIn()" class="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-xs shadow transition flex items-center space-x-1.5">
+                <i class="ph-bold ph-google-logo"></i>
+                <span>立即登入 Google 帳號</span>
+              </button>
+            </div>
+          `;
+        }
+
+        if (isDriveLoading) {
+          return `<div class="h-full flex flex-col items-center justify-center opacity-60 space-y-2"><i class="ph-bold ph-spinner animate-spin text-2xl text-blue-500"></i><p>正在讀取 Google 雲端硬碟檔案...</p></div>`;
+        }
+
+        if (!googleDriveFiles.length) {
+          return `<div class="h-full flex flex-col items-center justify-center opacity-50 space-y-2"><i class="ph ph-cloud-slash text-4xl"></i><p>雲端硬碟中尚無檔案</p></div>`;
+        }
+
+        return renderFileCollection(googleDriveFiles);
+      }
+
+      const folder = FINDER_DATA[folderKey] || FINDER_DATA.recents;
+      if (!folder.items.length) {
+        return `<div class="h-full flex flex-col items-center justify-center opacity-50"><i class="ph ph-folder-open text-4xl mb-2"></i><p>此資料夾是空的</p></div>`;
+      }
+
+      return renderFileCollection(folder.items);
+    }
+
+    function renderFileCollection(items) {
+      if (finderViewMode === 'grid') {
+        return `
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            ${items.map(item => `
+              <div ondblclick="handleFinderItemOpen('${item.type}', '${item.appId || ''}', '${item.targetFolder || ''}', '${escapeHTML(item.name)}', '${item.webViewLink || ''}')" class="group p-2.5 rounded-xl hover:bg-blue-500/15 dark:hover:bg-blue-500/25 border border-transparent hover:border-blue-500/30 flex flex-col items-center text-center cursor-pointer transition">
+                <div class="w-12 h-12 rounded-xl bg-white/70 dark:bg-white/10 shadow-sm flex items-center justify-center mb-2">
+                  <i class="ph-fill ${item.icon} text-3xl ${item.color}"></i>
+                </div>
+                <div class="font-medium text-xs leading-snug line-clamp-2 break-all">${escapeHTML(item.name)}</div>
+                <div class="text-[10px] opacity-55 mt-0.5">${item.size}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        return `
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-400/20 text-[11px] opacity-60">
+                <th class="py-1.5 px-2 font-medium">名稱</th>
+                <th class="py-1.5 px-2 font-medium hidden sm:table-cell">修改日期</th>
+                <th class="py-1.5 px-2 font-medium text-right">大小</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-400/10">
+              ${items.map(item => `
+                <tr ondblclick="handleFinderItemOpen('${item.type}', '${item.appId || ''}', '${item.targetFolder || ''}', '${escapeHTML(item.name)}', '${item.webViewLink || ''}')" class="hover:bg-blue-500 hover:text-white cursor-pointer transition group">
+                  <td class="py-2 px-2 flex items-center space-x-2">
+                    <i class="ph-fill ${item.icon} text-base ${item.color} group-hover:text-white"></i>
+                    <span class="truncate">${escapeHTML(item.name)}</span>
+                  </td>
+                  <td class="py-2 px-2 opacity-70 hidden sm:table-cell">${item.date}</td>
+                  <td class="py-2 px-2 opacity-70 text-right">${item.size}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    function switchFinderFolder(folderKey) {
+      currentFinderFolder = folderKey;
+      const area = document.getElementById('finder-content-area');
+      const breadcrumb = document.getElementById('finder-breadcrumb');
+
+      if (folderKey === 'gdrive' && googleAccessToken && googleDriveFiles.length === 0) {
+        fetchGoogleDriveFiles();
+      }
+
+      if (area) {
+        area.innerHTML = renderFinderItems(folderKey);
+        if (breadcrumb) {
+          breadcrumb.textContent = folderKey === 'gdrive' ? 'Google 雲端硬碟' : (FINDER_DATA[folderKey]?.title || 'Finder');
+        }
+      }
+
+      document.querySelectorAll('.finder-nav-btn').forEach(btn => {
+        const navId = btn.getAttribute('data-finder-nav');
+        const isTarget = navId === folderKey;
+        btn.className = `finder-nav-btn w-full flex items-center ${navId === 'gdrive' ? 'justify-between' : 'space-x-2'} px-2 py-1.5 rounded-lg transition text-left ${isTarget ? 'bg-blue-500 text-white font-medium' : 'hover:bg-black/5 dark:hover:bg-white/10'}`;
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.classList.toggle('text-white', isTarget);
+          if (navId === 'gdrive') {
+            icon.classList.toggle('text-emerald-500', !isTarget);
+          } else {
+            icon.classList.toggle('text-blue-500', !isTarget);
+          }
+        }
+      });
+    }
+
+    function setFinderViewMode(mode) {
+      finderViewMode = mode;
+      switchFinderFolder(currentFinderFolder);
+    }
+
+    function handleFinderItemOpen(type, appId, targetFolder, name, webViewLink = '') {
+      if (type === 'app' && appId) {
+        openApp(appId);
+      } else if (type === 'folder' && targetFolder) {
+        switchFinderFolder(targetFolder);
+      } else if (type === 'gdrive-file' && webViewLink) {
+        window.open(webViewLink, '_blank', 'noopener,noreferrer');
+      } else {
+        showSystemToast(`已開啟預覽：「${name}」`);
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       2. 備忘錄 (Notes) - 支援 Google Drive 雙向同步、LocalStorage 儲存與本機匯出
+       -------------------------------------------------------------------------- */
+    function initNotesData() {
+      const saved = localStorage.getItem('macos_sim_notes_zh');
+      if (saved) {
+        try {
+          notesData = JSON.parse(saved);
+        } catch (e) {
+          notesData = [];
+        }
+      }
+      if (!notesData || notesData.length === 0) {
+        notesData = [
+          {
+            id: 'note-1',
+            title: '歡迎使用 macOS 備忘錄（支援雲端與本機雙軌儲存）',
+            content: '這是一個整合 Google Drive 雲端同步與 LocalStorage 本機備援的備忘錄：\n\n• 未登入時：自動即時儲存在瀏覽器本機儲存空間\n• 登入 Google 後：自動與 Google Drive 的 macOS_Web_Notes_Backup.json 雙向同步\n• 隨時可點擊右上角「匯出」將筆記下載至本機電腦',
+            updatedAt: '今天 11:30'
+          },
+          {
+            id: 'note-2',
+            title: 'GitHub Pages 部署檢查清單',
+            content: '1. 將倉庫推送至 GitHub 並開啟 GitHub Pages\n2. 複製專屬網址 (例如 https://username.github.io)\n3. 前往 Google Cloud Console 將該網址加入 OAuth 已授權的 JavaScript 來源',
+            updatedAt: '昨天 19:20'
+          }
+        ];
+        saveNotesToStorage();
+      }
+      activeNoteId = notesData[0].id;
+    }
+
+    function saveNotesToStorage() {
+      localStorage.setItem('macos_sim_notes_zh', JSON.stringify(notesData));
+    }
+
+    // 與 Google Drive 同步備忘錄 JSON 檔案
+    let cloudSyncDebounceTimer = null;
+
+    async function syncNotesWithGoogleDrive(manual = false) {
+      if (!googleAccessToken) {
+        if (manual) showSystemToast('請先登入 Google 帳號以使用雲端同步功能');
+        return;
+      }
+
+      driveSyncStatus = 'syncing';
+      updateNotesSyncBadge();
+
+      try {
+        // 1. 搜尋雲端是否已存在備份檔
+        if (!driveBackupFileId) {
+          const searchParams = new URLSearchParams({
+            q: `name = '${DRIVE_BACKUP_FILENAME}' and trashed = false`,
+            fields: 'files(id, name, modifiedTime)'
+          });
+          const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`, {
+            headers: { Authorization: `Bearer ${googleAccessToken}` }
+          });
+          if (searchRes.status === 401) {
+            handleGoogleSignOut();
+            return;
+          }
+          const searchData = await searchRes.json();
+          if (searchData.files && searchData.files.length > 0) {
+            driveBackupFileId = searchData.files[0].id;
+
+            // 若為初次連線，從雲端讀取並合併最新資料
+            if (!manual) {
+              const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveBackupFileId}?alt=media`, {
+                headers: { Authorization: `Bearer ${googleAccessToken}` }
+              });
+              if (fileRes.ok) {
+                const cloudPayload = await fileRes.json();
+                if (Array.isArray(cloudPayload.notes) && cloudPayload.notes.length > 0) {
+                  notesData = cloudPayload.notes;
+                  activeNoteId = notesData[0].id;
+                  saveNotesToStorage();
+                  renderNotesApp();
+                }
+              }
+            }
+          }
+        }
+
+        // 2. 將目前本機筆記上傳更新至 Google Drive
+        const payload = JSON.stringify({
+          app: 'macOS Web Desktop',
+          updatedAt: new Date().toISOString(),
+          notes: notesData
+        }, null, 2);
+
+        const metadata = {
+          name: DRIVE_BACKUP_FILENAME,
+          mimeType: 'application/json'
+        };
+
+        const boundary = '-------macos_web_sync_boundary';
+        const multipartBody =
+          `--${boundary}\r\n` +
+          `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+          `${JSON.stringify(metadata)}\r\n` +
+          `--${boundary}\r\n` +
+          `Content-Type: application/json\r\n\r\n` +
+          `${payload}\r\n` +
+          `--${boundary}--`;
+
+        const uploadUrl = driveBackupFileId
+          ? `https://www.googleapis.com/upload/drive/v3/files/${driveBackupFileId}?uploadType=multipart`
+          : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+
+        const uploadRes = await fetch(uploadUrl, {
+          method: driveBackupFileId ? 'PATCH' : 'POST',
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
+          },
+          body: multipartBody
+        });
+
+        if (uploadRes.ok) {
+          const uploadedFile = await uploadRes.json();
+          driveBackupFileId = uploadedFile.id;
+          driveSyncStatus = 'synced';
+          if (manual) showSystemToast('備忘錄已成功同步至 Google 雲端硬碟！');
+          fetchGoogleDriveFiles(); // 更新 Finder 雲端列表
+        } else {
+          driveSyncStatus = 'error';
+        }
+      } catch (err) {
+        console.error('Google Drive 同步失敗:', err);
+        driveSyncStatus = 'error';
+      }
+
+      updateNotesSyncBadge();
+    }
+
+    function updateNotesSyncBadge() {
+      const badge = document.getElementById('notes-cloud-status');
+      if (!badge) return;
+      if (!googleAccessToken) {
+        badge.innerHTML = `<i class="ph-fill ph-hard-drive text-gray-500"></i><span>本機儲存</span>`;
+      } else if (driveSyncStatus === 'syncing') {
+        badge.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-blue-500"></i><span>同步中...</span>`;
+      } else if (driveSyncStatus === 'synced') {
+        badge.innerHTML = `<i class="ph-fill ph-cloud-check text-emerald-500"></i><span>已同步 Drive</span>`;
+      } else {
+        badge.innerHTML = `<i class="ph-fill ph-warning-circle text-amber-500"></i><span>已存本機</span>`;
+      }
+    }
+
+    // 本地端匯出單篇或全部資料
+    function exportCurrentNoteTxt() {
+      const activeNote = notesData.find(n => n.id === activeNoteId);
+      if (!activeNote) return;
+      const textContent = `${activeNote.title}\n更新時間：${activeNote.updatedAt}\n----------------------------------------\n${activeNote.content}`;
+      downloadLocalFile(`${activeNote.title || '備忘錄'}.txt`, textContent, 'text/plain;charset=utf-8');
+      showSystemToast(`已匯出「${activeNote.title || '備忘錄'}.txt」至本機`);
+    }
+
+    function exportAllLocalData() {
+      const exportObj = {
+        exportedAt: new Date().toLocaleString('zh-TW'),
+        environment: 'macOS Web Desktop',
+        appearance: { isDarkMode, currentWallpaper },
+        notes: notesData
+      };
+      downloadLocalFile(`macOS_桌面本機備份_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(exportObj, null, 2), 'application/json');
+      showSystemToast('已匯出完整本機備份 JSON 檔案');
+    }
+
+    function downloadLocalFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function buildNotesHTML() {
+      return `
+        <div class="flex h-full text-xs">
+          <!-- 左側筆記列表 -->
+          <div class="w-44 sm:w-56 bg-black/5 dark:bg-white/5 border-r border-gray-400/20 flex flex-col shrink-0">
+            <div class="h-10 px-3 border-b border-gray-400/20 flex items-center justify-between">
+              <span class="font-bold opacity-75">所有備忘錄</span>
+              <button onclick="createNewNote()" class="p-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition" title="新增備忘錄">
+                <i class="ph-bold ph-plus"></i>
+              </button>
+            </div>
+            <div id="notes-list-container" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+          </div>
+
+          <!-- 右側編輯區域 -->
+          <div class="flex-1 flex flex-col bg-white/60 dark:bg-zinc-900/50">
+            <div class="h-10 px-3 sm:px-4 border-b border-gray-400/20 flex items-center justify-between text-[11px]">
+              <div id="notes-cloud-status" class="flex items-center space-x-1.5 font-medium opacity-85">
+                <i class="ph-fill ph-hard-drive text-gray-500"></i><span>本機儲存</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <button onclick="syncNotesWithGoogleDrive(true)" class="px-2 py-1 rounded hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center space-x-1 transition" title="同步至 Google Drive">
+                  <i class="ph-bold ph-cloud-arrow-up"></i>
+                  <span class="hidden sm:inline">雲端同步</span>
+                </button>
+                <button onclick="exportCurrentNoteTxt()" class="px-2 py-1 rounded hover:bg-black/10 dark:hover:bg-white/10 flex items-center space-x-1 transition" title="下載為本機 TXT 檔案">
+                  <i class="ph-bold ph-download-simple"></i>
+                  <span class="hidden sm:inline">匯出</span>
+                </button>
+                <button onclick="deleteCurrentNote()" class="text-red-500 hover:text-red-600 flex items-center space-x-1 px-2 py-1 rounded hover:bg-red-500/10 transition">
+                  <i class="ph-bold ph-trash"></i>
+                  <span class="hidden sm:inline">刪除</span>
+                </button>
+              </div>
+            </div>
+            <div class="flex-1 p-4 flex flex-col space-y-2 overflow-hidden">
+              <input id="note-title-input" type="text" oninput="updateCurrentNote()" placeholder="輸入標題..." class="text-base sm:text-lg font-bold bg-transparent outline-none border-b border-transparent focus:border-amber-500/40 pb-1" />
+              <textarea id="note-body-input" oninput="updateCurrentNote()" placeholder="開始輸入備忘錄內容..." class="flex-1 w-full bg-transparent outline-none resize-none text-xs sm:text-sm leading-relaxed"></textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderNotesApp() {
+      const listContainer = document.getElementById('notes-list-container');
+      const titleInput = document.getElementById('note-title-input');
+      const bodyInput = document.getElementById('note-body-input');
+      updateNotesSyncBadge();
+      if (!listContainer) return;
+
+      listContainer.innerHTML = notesData.map(note => {
+        const isActive = note.id === activeNoteId;
+        return `
+          <div onclick="selectNote('${note.id}')" class="p-2.5 rounded-xl cursor-pointer transition ${isActive ? 'bg-amber-400/90 text-gray-900 shadow-sm' : 'hover:bg-black/5 dark:hover:bg-white/10'}">
+            <div class="font-bold truncate">${escapeHTML(note.title || '未命名備忘錄')}</div>
+            <div class="text-[10px] opacity-75 truncate mt-0.5">${note.updatedAt} ・ ${escapeHTML(note.content.replace(/\n/g, ' ') || '無其他文字')}</div>
+          </div>
+        `;
+      }).join('');
+
+      const activeNote = notesData.find(n => n.id === activeNoteId);
+      if (activeNote && titleInput && bodyInput) {
+        titleInput.value = activeNote.title;
+        bodyInput.value = activeNote.content;
+      } else if (titleInput && bodyInput) {
+        titleInput.value = '';
+        bodyInput.value = '';
+      }
+    }
+
+    function selectNote(id) {
+      activeNoteId = id;
+      renderNotesApp();
+    }
+
+    function createNewNote() {
+      const now = new Date();
+      const timeStr = `今天 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const newNote = {
+        id: 'note-' + Date.now(),
+        title: '新增備忘錄',
+        content: '',
+        updatedAt: timeStr
+      };
+      notesData.unshift(newNote);
+      activeNoteId = newNote.id;
+      saveNotesToStorage();
+      renderNotesApp();
+      if (googleAccessToken) syncNotesWithGoogleDrive();
+    }
+
+    function updateCurrentNote() {
+      const activeNote = notesData.find(n => n.id === activeNoteId);
+      if (!activeNote) return;
+      const titleInput = document.getElementById('note-title-input');
+      const bodyInput = document.getElementById('note-body-input');
+      const now = new Date();
+      activeNote.title = titleInput.value;
+      activeNote.content = bodyInput.value;
+      activeNote.updatedAt = `今天 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      saveNotesToStorage();
+
+      // 若已登入 Google，於停止輸入 1.5 秒後自動背景同步至 Google Drive
+      if (googleAccessToken) {
+        clearTimeout(cloudSyncDebounceTimer);
+        cloudSyncDebounceTimer = setTimeout(() => {
+          syncNotesWithGoogleDrive(false);
+        }, 1500);
+      }
+
+      // 更新左側列表預覽但不重設輸入框游標
+      const listContainer = document.getElementById('notes-list-container');
+      if (listContainer) {
+        listContainer.innerHTML = notesData.map(note => {
+          const isActive = note.id === activeNoteId;
+          return `
+            <div onclick="selectNote('${note.id}')" class="p-2.5 rounded-xl cursor-pointer transition ${isActive ? 'bg-amber-400/90 text-gray-900 shadow-sm' : 'hover:bg-black/5 dark:hover:bg-white/10'}">
+              <div class="font-bold truncate">${escapeHTML(note.title || '未命名備忘錄')}</div>
+              <div class="text-[10px] opacity-75 truncate mt-0.5">${note.updatedAt} ・ ${escapeHTML(note.content.replace(/\n/g, ' ') || '無其他文字')}</div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function deleteCurrentNote() {
+      if (notesData.length <= 1) {
+        notesData[0].title = '空白備忘錄';
+        notesData[0].content = '';
+      } else {
+        notesData = notesData.filter(n => n.id !== activeNoteId);
+        activeNoteId = notesData[0].id;
+      }
+      saveNotesToStorage();
+      renderNotesApp();
+      if (googleAccessToken) syncNotesWithGoogleDrive();
+    }
+
+    /* --------------------------------------------------------------------------
+       3. 計算機 (Calculator)
+       -------------------------------------------------------------------------- */
+    function buildCalculatorHTML() {
+      const buttons = [
+        { label: 'AC', type: 'func', action: 'clear' },
+        { label: '+/-', type: 'func', action: 'sign' },
+        { label: '%', type: 'func', action: 'percent' },
+        { label: '÷', type: 'op', action: '/' },
+        { label: '7', type: 'num', action: '7' },
+        { label: '8', type: 'num', action: '8' },
+        { label: '9', type: 'num', action: '9' },
+        { label: '×', type: 'op', action: '*' },
+        { label: '4', type: 'num', action: '4' },
+        { label: '5', type: 'num', action: '5' },
+        { label: '6', type: 'num', action: '6' },
+        { label: '−', type: 'op', action: '-' },
+        { label: '1', type: 'num', action: '1' },
+        { label: '2', type: 'num', action: '2' },
+        { label: '3', type: 'num', action: '3' },
+        { label: '+', type: 'op', action: '+' },
+        { label: '0', type: 'num', action: '0', span: 'col-span-2' },
+        { label: '.', type: 'num', action: '.' },
+        { label: '=', type: 'op', action: '=' }
+      ];
+
+      return `
+        <div class="h-full bg-[#1c1c1e] text-white flex flex-col p-3 select-none">
+          <!-- 顯示螢幕 -->
+          <div class="h-20 flex items-end justify-end px-2 pb-2 overflow-hidden">
+            <span id="calc-display" class="text-4xl font-light tracking-tight truncate">${calcState.display}</span>
+          </div>
+          <!-- 按鍵網格 -->
+          <div class="flex-1 grid grid-cols-4 gap-2">
+            ${buttons.map(btn => {
+              let bgClass = 'bg-[#333336] hover:bg-[#47474a] text-white';
+              if (btn.type === 'func') bgClass = 'bg-[#a5a5a7] hover:bg-[#c5c5c7] text-black font-medium';
+              if (btn.type === 'op') bgClass = 'bg-[#ff9f0a] hover:bg-[#ffb340] text-white font-semibold';
+              return `
+                <button onclick="handleCalcPress('${btn.type}', '${btn.action}')" class="${btn.span || ''} ${bgClass} rounded-full flex items-center justify-center text-lg active:scale-95 transition">
+                  ${btn.label}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function handleCalcPress(type, action) {
+      if (type === 'num') {
+        if (calcState.waitingForOperand) {
+          calcState.display = action === '.' ? '0.' : action;
+          calcState.waitingForOperand = false;
+        } else {
+          if (action === '.' && calcState.display.includes('.')) return;
+          calcState.display = calcState.display === '0' && action !== '.' ? action : calcState.display + action;
+        }
+      } else if (type === 'func') {
+        const val = parseFloat(calcState.display);
+        if (action === 'clear') {
+          calcState = { display: '0', prevValue: null, operator: null, waitingForOperand: false };
+        } else if (action === 'sign') {
+          calcState.display = String(-val);
+        } else if (action === 'percent') {
+          calcState.display = String(val / 100);
+        }
+      } else if (type === 'op') {
+        const inputValue = parseFloat(calcState.display);
+        if (calcState.prevValue === null) {
+          calcState.prevValue = inputValue;
+        } else if (calcState.operator && !calcState.waitingForOperand) {
+          const result = performCalc(calcState.prevValue, inputValue, calcState.operator);
+          calcState.display = String(Number(result.toFixed(8)));
+          calcState.prevValue = result;
+        }
+        calcState.waitingForOperand = true;
+        calcState.operator = action === '=' ? null : action;
+      }
+
+      const displayEl = document.getElementById('calc-display');
+      if (displayEl) displayEl.textContent = calcState.display;
+    }
+
+    function performCalc(a, b, op) {
+      switch (op) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return b === 0 ? 0 : a / b;
+        default: return b;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       4. 終端機 (Terminal)
+       -------------------------------------------------------------------------- */
+    function buildTerminalHTML() {
+      return `
+        <div onclick="document.getElementById('terminal-input')?.focus()" class="h-full bg-[#16181d] text-emerald-400 font-mono text-xs p-3.5 overflow-y-auto flex flex-col">
+          <div id="terminal-output" class="space-y-1.5 leading-relaxed">
+            ${terminalHistory.map(line => renderTerminalLine(line)).join('')}
+          </div>
+          <div class="flex items-center mt-2">
+            <span class="text-sky-400 font-semibold mr-2 shrink-0">user@MacBook-Pro ~ %</span>
+            <input id="terminal-input" type="text" autocomplete="off" spellcheck="false" onkeydown="handleTerminalKey(event)" class="flex-1 bg-transparent text-white outline-none font-mono text-xs" autofocus />
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTerminalLine(line) {
+      if (line.type === 'cmd') {
+        return `<div><span class="text-sky-400 font-semibold">user@MacBook-Pro ~ %</span> <span class="text-white">${escapeHTML(line.text)}</span></div>`;
+      }
+      return `<div class="whitespace-pre-wrap text-gray-200">${line.html || escapeHTML(line.text)}</div>`;
+    }
+
+    function handleTerminalKey(e) {
+      if (e.key !== 'Enter') return;
+      const input = e.target;
+      const rawCmd = input.value.trim();
+      input.value = '';
+
+      terminalHistory.push({ type: 'cmd', text: rawCmd });
+
+      if (rawCmd) {
+        const parts = rawCmd.split(' ');
+        const cmd = parts[0].toLowerCase();
+        const args = parts.slice(1).join(' ');
+
+        switch (cmd) {
+          case 'help':
+            terminalHistory.push({
+              type: 'out',
+              text: '可用指令清單：\n  help      顯示此說明訊息\n  ls        列出目前目錄檔案\n  pwd       顯示目前工作路徑\n  date      顯示系統目前日期與時間\n  whoami    顯示目前登入使用者\n  gdrive    查看 Google OAuth 與雲端硬碟連線狀態\n  echo      輸出指定文字 (例如: echo 你好 macOS)\n  neofetch  顯示系統硬體與環境資訊\n  clear     清除終端機畫面'
+            });
+            break;
+          case 'gdrive':
+            if (googleAccessToken) {
+              terminalHistory.push({
+                type: 'out',
+                text: `[Google Drive API] 狀態：已連線\n帳號：${googleUserProfile?.email || '已驗證'}\n雲端檔案數：${googleDriveFiles.length} 個項目\n備忘錄同步狀態：${driveSyncStatus}`
+              });
+            } else {
+              terminalHistory.push({
+                type: 'out',
+                text: `[Google Drive API] 狀態：未登入（目前使用本機 LocalStorage 模式）\n網域來源：${window.location.origin}\n提示：點擊右上角選單列 Google 圖示即可進行 OAuth 2.0 驗證登入。`
+              });
+            }
+            break;
+          case 'ls':
+            terminalHistory.push({
+              type: 'out',
+              html: '<span class="text-sky-400 font-bold">Applications</span>   <span class="text-sky-400 font-bold">Desktop</span>   <span class="text-sky-400 font-bold">Documents</span>   <span class="text-sky-400 font-bold">Downloads</span>   待辦清單.txt'
+            });
+            break;
+          case 'pwd':
+            terminalHistory.push({ type: 'out', text: '/Users/user' });
+            break;
+          case 'whoami':
+            terminalHistory.push({ type: 'out', text: 'user (Apple M4 Max Administrator)' });
+            break;
+          case 'date':
+            terminalHistory.push({ type: 'out', text: new Date().toLocaleString('zh-TW') });
+            break;
+          case 'echo':
+            terminalHistory.push({ type: 'out', text: args || '' });
+            break;
+          case 'neofetch':
+            terminalHistory.push({
+              type: 'out',
+              html: `<div class="flex space-x-4 py-1 text-[11px]">
+<pre class="text-emerald-400 font-bold leading-tight">   .:'
+  ::'
+ .::   .:'
+ :::  :::'
+ :::::::::
+ ':::::::'
+   ':::'</pre>
+<div class="space-y-0.5">
+  <div><span class="text-sky-400 font-bold">user@MacBook-Pro</span></div>
+  <div>-------------------</div>
+  <div><span class="text-amber-400">OS:</span> macOS Sonoma 14.6 arm64</div>
+  <div><span class="text-amber-400">Host:</span> MacBook Pro (16-inch, 2026)</div>
+  <div><span class="text-amber-400">Chip:</span> Apple M4 Max</div>
+  <div><span class="text-amber-400">Shell:</span> zsh 5.9</div>
+  <div><span class="text-amber-400">Memory:</span> 64 GB Unified</div>
+</div>
+</div>`
+            });
+            break;
+          case 'clear':
+            terminalHistory = [];
+            break;
+          default:
+            terminalHistory.push({ type: 'out', text: `zsh: command not found: ${cmd}（輸入 help 查看可用指令）` });
+        }
+      }
+
+      const outEl = document.getElementById('terminal-output');
+      if (outEl) {
+        outEl.innerHTML = terminalHistory.map(line => renderTerminalLine(line)).join('');
+        scrollTerminalToBottom();
+      }
+    }
+
+    function scrollTerminalToBottom() {
+      const input = document.getElementById('terminal-input');
+      if (input && input.parentElement && input.parentElement.parentElement) {
+        const container = input.parentElement.parentElement;
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       5. Safari 瀏覽器
+       -------------------------------------------------------------------------- */
+    const SAFARI_PAGES = {
+      home: {
+        url: 'https://www.apple.com/tw/',
+        title: 'Apple (台灣)',
+        html: `
+          <div class="max-w-2xl mx-auto py-8 px-4 text-center space-y-6">
+            <div class="inline-block px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold">全新登場</div>
+            <h1 class="text-2xl sm:text-4xl font-bold tracking-tight">MacBook Pro 搭載 M4 Max</h1>
+            <p class="text-sm opacity-75 max-w-md mx-auto">超乎想像的運算速度、Liquid Retina XDR 顯示器，以及全天候電池續航力，專為創作者與開發者打造。</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-left">
+              <div class="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-400/20">
+                <i class="ph-fill ph-cpu text-2xl text-blue-500 mb-2"></i>
+                <div class="font-bold text-sm">極致效能</div>
+                <p class="text-xs opacity-70 mt-1">16 核心 CPU 與 40 核心 GPU，輕鬆駕馭大型模型與 8K 剪輯。</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-400/20">
+                <i class="ph-fill ph-sparkle text-2xl text-purple-500 mb-2"></i>
+                <div class="font-bold text-sm">Apple Intelligence</div>
+                <p class="text-xs opacity-70 mt-1">深度整合於系統之中，兼具強大生產力與隱私安全保護。</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-400/20">
+                <i class="ph-fill ph-battery-full text-2xl text-emerald-500 mb-2"></i>
+                <div class="font-bold text-sm">22 小時續航</div>
+                <p class="text-xs opacity-70 mt-1">Mac 歷來最持久的電池續航表現，隨時隨地高效工作。</p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      news: {
+        url: 'https://technews.tw/',
+        title: '科技新報 TechNews',
+        html: `
+          <div class="max-w-2xl mx-auto py-6 px-4 space-y-4">
+            <h2 class="text-xl font-bold border-b border-gray-400/20 pb-2">今日熱門科技焦點</h2>
+            <div class="p-4 rounded-xl bg-black/5 dark:bg-white/5 space-y-1">
+              <span class="text-[11px] text-blue-500 font-semibold">人工智慧</span>
+              <h3 class="font-bold text-base">次世代瀏覽器端 AI 模型推論速度突破新高</h3>
+              <p class="text-xs opacity-75">隨著 WebGPU 普及，使用者無需雲端伺服器即可在本地裝置流暢執行大型語言與視覺模型。</p>
+            </div>
+            <div class="p-4 rounded-xl bg-black/5 dark:bg-white/5 space-y-1">
+              <span class="text-[11px] text-emerald-500 font-semibold">設計趨勢</span>
+              <h3 class="font-bold text-base">空間運算與毛玻璃擬態介面再次引領桌面設計潮流</h3>
+              <p class="text-xs opacity-75">高對比度文字搭配半透明層次感，有效降低長時間閱讀的視覺疲勞。</p>
+            </div>
+          </div>
+        `
+      },
+      weather: {
+        url: 'https://www.cwa.gov.tw/',
+        title: '中央氣象署 - 台灣天氣預報',
+        html: `
+          <div class="max-w-xl mx-auto py-8 px-4">
+            <div class="rounded-3xl bg-gradient-to-br from-sky-400 to-blue-600 text-white p-6 shadow-lg">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="text-lg font-bold">高雄市・岡山區</div>
+                  <div class="text-xs opacity-85">晴時多雲 ・ 空氣品質良好</div>
+                </div>
+                <i class="ph-fill ph-sun text-5xl text-yellow-300"></i>
+              </div>
+              <div class="text-5xl font-light my-4">26°C</div>
+              <div class="grid grid-cols-4 gap-2 pt-3 border-t border-white/25 text-center text-xs">
+                <div><div class="opacity-75">週四</div><div class="font-bold mt-1">27° / 20°</div></div>
+                <div><div class="opacity-75">週五</div><div class="font-bold mt-1">25° / 19°</div></div>
+                <div><div class="opacity-75">週六</div><div class="font-bold mt-1">24° / 18°</div></div>
+                <div><div class="opacity-75">週日</div><div class="font-bold mt-1">26° / 19°</div></div>
+              </div>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    function buildSafariHTML() {
+      return `
+        <div class="flex flex-col h-full text-xs">
+          <!-- 網址列與控制項 -->
+          <div class="h-11 px-3 border-b border-gray-400/20 flex items-center space-x-2 bg-white/40 dark:bg-black/20 shrink-0">
+            <div class="flex items-center space-x-1">
+              <button onclick="navigateSafari('home')" class="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition" title="首頁">
+                <i class="ph-bold ph-house"></i>
+              </button>
+              <button onclick="navigateSafari('home')" class="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition" title="重新整理">
+                <i class="ph-bold ph-arrow-clockwise"></i>
+              </button>
+            </div>
+            <!-- 網址輸入框 -->
+            <div class="flex-1 flex items-center bg-black/5 dark:bg-white/10 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-blue-500">
+              <i class="ph-fill ph-lock-simple text-gray-500 mr-2"></i>
+              <input id="safari-url-input" type="text" value="${SAFARI_PAGES.home.url}" onkeydown="handleSafariUrlEnter(event)" class="w-full bg-transparent outline-none text-xs" />
+            </div>
+          </div>
+
+          <!-- 書籤列 -->
+          <div class="px-3 py-1.5 border-b border-gray-400/15 flex items-center space-x-2 overflow-x-auto shrink-0 bg-black/[0.02] dark:bg-white/[0.02]">
+            <span class="text-[10px] opacity-50">書籤：</span>
+            <button onclick="navigateSafari('home')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition whitespace-nowrap">Apple 台灣</button>
+            <button onclick="navigateSafari('news')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition whitespace-nowrap">科技新報</button>
+            <button onclick="navigateSafari('weather')" class="px-2 py-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition whitespace-nowrap">台灣天氣</button>
+          </div>
+
+          <!-- 網頁檢視區 -->
+          <div id="safari-viewport" class="flex-1 overflow-y-auto bg-white/80 dark:bg-zinc-900/80">
+            ${SAFARI_PAGES.home.html}
+          </div>
+        </div>
+      `;
+    }
+
+    function navigateSafari(pageKey) {
+      const page = SAFARI_PAGES[pageKey] || SAFARI_PAGES.home;
+      const viewport = document.getElementById('safari-viewport');
+      const urlInput = document.getElementById('safari-url-input');
+      if (viewport) viewport.innerHTML = page.html;
+      if (urlInput) urlInput.value = page.url;
+    }
+
+    function handleSafariUrlEnter(e) {
+      if (e.key !== 'Enter') return;
+      const val = e.target.value.trim();
+      if (val.includes('weather') || val.includes('cwa') || val.includes('天氣')) {
+        navigateSafari('weather');
+      } else if (val.includes('news') || val.includes('科技')) {
+        navigateSafari('news');
+      } else if (val.includes('apple')) {
+        navigateSafari('home');
+      } else {
+        const viewport = document.getElementById('safari-viewport');
+        if (viewport) {
+          viewport.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center p-6 text-center space-y-3">
+              <i class="ph-duotone ph-globe text-5xl text-blue-500"></i>
+              <h3 class="text-base font-bold">搜尋結果：${escapeHTML(val)}</h3>
+              <p class="text-xs opacity-70 max-w-sm">此為 macOS 模擬瀏覽器預覽畫面，您可以點擊上方書籤快速瀏覽預設網頁。</p>
+              <button onclick="navigateSafari('home')" class="px-4 py-1.5 rounded-lg bg-blue-500 text-white text-xs">返回首頁</button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       6. 系統設定 (System Settings) - Google 帳號同步、本機備份、桌布與外觀模式
+       -------------------------------------------------------------------------- */
+    function buildSettingsHTML() {
+      const wallpapers = [
+        { id: 'wallpaper-sonoma', name: 'Sonoma 晚霞', preview: 'wallpaper-sonoma' },
+        { id: 'wallpaper-ventura', name: 'Ventura 暖陽', preview: 'wallpaper-ventura' },
+        { id: 'wallpaper-monterey', name: 'Monterey 紫羅蘭', preview: 'wallpaper-monterey' },
+        { id: 'wallpaper-midnight', name: '午夜深藍', preview: 'wallpaper-midnight' },
+        { id: 'wallpaper-aurora', name: '極光青綠', preview: 'wallpaper-aurora' }
+      ];
+
+      return `
+        <div class="flex h-full text-xs">
+          <!-- 左側分類 -->
+          <div class="w-40 sm:w-48 bg-black/5 dark:bg-white/5 border-r border-gray-400/20 p-3 space-y-3 shrink-0">
+            <div class="flex items-center space-x-2.5 p-1.5">
+              <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 text-white flex items-center justify-center font-bold text-sm shadow overflow-hidden shrink-0">
+                ${googleUserProfile?.picture ? `<img src="${googleUserProfile.picture}" class="w-full h-full object-cover">` : 'U'}
+              </div>
+              <div class="leading-tight overflow-hidden">
+                <div class="font-bold truncate">${googleUserProfile?.name || 'Mac 本機使用者'}</div>
+                <div class="text-[10px] opacity-65 truncate">${googleUserProfile?.email || 'Google Drive / 本機備份'}</div>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="px-2.5 py-1.5 rounded-lg bg-blue-500 text-white font-medium flex items-center space-x-2">
+                <i class="ph-fill ph-cloud-check"></i>
+                <span>Google 雲端與外觀</span>
+              </div>
+              <div class="px-2.5 py-1.5 rounded-lg opacity-70 flex items-center space-x-2">
+                <i class="ph-fill ph-desktop"></i>
+                <span>桌面與 Dock</span>
+              </div>
+              <div class="px-2.5 py-1.5 rounded-lg opacity-70 flex items-center space-x-2">
+                <i class="ph-fill ph-shield-check"></i>
+                <span>隱私權與安全性</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側設定面板 -->
+          <div class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
+            <!-- Google 帳號與本地備份區塊 -->
+            <section class="space-y-2.5">
+              <h3 class="text-sm font-bold">Google Drive 雲端同步與本機輸出</h3>
+              <div class="p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-400/20 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div class="font-semibold flex items-center space-x-1.5">
+                      <span>${googleAccessToken ? '已連結 Google 帳號' : '未連結 Google 帳號（本機模式）'}</span>
+                      <span class="w-2 h-2 rounded-full ${googleAccessToken ? 'bg-emerald-500' : 'bg-gray-400'}"></span>
+                    </div>
+                    <div class="text-[11px] opacity-70 mt-0.5">
+                      ${googleAccessToken ? `帳號：${googleUserProfile?.email || '已授權存取 Drive'}` : '登入後可自動同步備忘錄並瀏覽 Google Drive 雲端檔案'}
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    ${googleAccessToken ? `
+                      <button onclick="syncNotesWithGoogleDrive(true)" class="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition">立即同步</button>
+                      <button onclick="handleGoogleSignOut()" class="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition">登出</button>
+                    ` : `
+                      <button onclick="handleGoogleSignIn()" class="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition flex items-center space-x-1">
+                        <i class="ph-bold ph-google-logo"></i>
+                        <span>登入 Google</span>
+                      </button>
+                    `}
+                    <button onclick="exportAllLocalData()" class="px-3 py-1.5 rounded-lg bg-white/70 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-gray-400/25 font-medium transition">
+                      匯出本機 JSON
+                    </button>
+                  </div>
+                </div>
+                <div class="text-[10px] opacity-65 pt-2 border-t border-gray-400/15">
+                  目前網域來源：<code class="font-mono select-all">${window.location.origin}</code>（部署至 GitHub Pages 時請確保此來源已加入 Google OAuth 用戶端白名單）
+                </div>
+              </div>
+            </section>
+
+            <!-- 外觀模式選擇 -->
+            <section class="space-y-2.5">
+              <h3 class="text-sm font-bold">外觀模式</h3>
+              <div class="grid grid-cols-2 gap-3 max-w-sm">
+                <button onclick="setDarkMode(false)" class="p-3 rounded-xl border-2 transition text-left ${!isDarkMode ? 'border-blue-500 bg-blue-500/10' : 'border-gray-400/25 hover:border-gray-400/50'}">
+                  <div class="h-12 rounded-lg bg-gradient-to-br from-gray-100 to-white border border-gray-300 mb-2 flex items-center justify-center">
+                    <i class="ph-fill ph-sun text-amber-500 text-xl"></i>
+                  </div>
+                  <div class="font-semibold">淺色模式</div>
+                </button>
+                <button onclick="setDarkMode(true)" class="p-3 rounded-xl border-2 transition text-left ${isDarkMode ? 'border-blue-500 bg-blue-500/15' : 'border-gray-400/25 hover:border-gray-400/50'}">
+                  <div class="h-12 rounded-lg bg-gradient-to-br from-gray-800 to-zinc-950 border border-gray-700 mb-2 flex items-center justify-center">
+                    <i class="ph-fill ph-moon text-indigo-400 text-xl"></i>
+                  </div>
+                  <div class="font-semibold">深色模式</div>
+                </button>
+              </div>
+            </section>
+
+            <!-- 桌面背景圖片選擇 -->
+            <section class="space-y-2.5">
+              <h3 class="text-sm font-bold">背景圖片</h3>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                ${wallpapers.map(wp => `
+                  <button onclick="changeWallpaper('${wp.id}')" class="group text-left focus:outline-none">
+                    <div class="h-20 rounded-xl ${wp.preview} border-2 transition shadow-sm ${currentWallpaper === wp.id ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/40 group-hover:scale-[1.02]'}"></div>
+                    <div class="mt-1 text-[11px] font-medium ${currentWallpaper === wp.id ? 'text-blue-500 font-bold' : 'opacity-80'}">${wp.name}</div>
+                  </button>
+                `).join('')}
+              </div>
+            </section>
+          </div>
+        </div>
+      `;
+    }
+
+    function changeWallpaper(wallpaperClass) {
+      const root = document.getElementById('desktop-root');
+      if (!root) return;
+      root.classList.remove('wallpaper-sonoma', 'wallpaper-ventura', 'wallpaper-monterey', 'wallpaper-midnight', 'wallpaper-aurora');
+      root.classList.add(wallpaperClass);
+      currentWallpaper = wallpaperClass;
+
+      // 若系統設定視窗開啟中，重新渲染以更新選中邊框
+      const settingsBody = document.getElementById('window-body-settings');
+      if (settingsBody) {
+        settingsBody.innerHTML = buildSettingsHTML();
+      }
+    }
+
+    function setDarkMode(enable) {
+      isDarkMode = enable;
+      document.documentElement.classList.toggle('dark', isDarkMode);
+
+      const ccLabel = document.getElementById('cc-theme-label');
+      const ccIcon = document.getElementById('cc-theme-icon');
+      if (ccLabel) ccLabel.textContent = isDarkMode ? '深色模式' : '淺色模式';
+      if (ccIcon) {
+        ccIcon.innerHTML = isDarkMode ? '<i class="ph-fill ph-moon"></i>' : '<i class="ph-fill ph-sun"></i>';
+      }
+
+      const settingsBody = document.getElementById('window-body-settings');
+      if (settingsBody) {
+        settingsBody.innerHTML = buildSettingsHTML();
+      }
+    }
+
+    function toggleDarkMode() {
+      setDarkMode(!isDarkMode);
+    }
+
+    function setScreenBrightness(val) {
+      const root = document.getElementById('desktop-root');
+      const label = document.getElementById('brightness-val');
+      if (root) root.style.filter = `brightness(${val}%)`;
+      if (label) label.textContent = `${val}%`;
+    }
+
+    /* ==========================================================================
+       頂部彈出面板、Spotlight 搜尋與桌面圖示互動
+       ========================================================================== */
+    function togglePopover(id, e) {
+      if (e) e.stopPropagation();
+      const target = document.getElementById(id);
+      const isHidden = target.classList.contains('hidden');
+      closeAllPopovers();
+      if (isHidden) {
+        target.classList.remove('hidden');
+      }
+    }
+
+    function closeAllPopovers() {
+      document.querySelectorAll('.popover-panel').forEach(el => el.classList.add('hidden'));
+    }
+
+    function handleDesktopClick(e) {
+      closeAllPopovers();
+      if (!e.target.closest('.desktop-icon')) {
+        document.querySelectorAll('.desktop-icon').forEach(el => {
+          el.classList.remove('bg-blue-500/35', 'ring-1', 'ring-blue-400');
+        });
+      }
+    }
+
+    function handleIconSelect(el, e) {
+      e.stopPropagation();
+      document.querySelectorAll('.desktop-icon').forEach(item => {
+        item.classList.remove('bg-blue-500/35', 'ring-1', 'ring-blue-400');
+      });
+      el.classList.add('bg-blue-500/35', 'ring-1', 'ring-blue-400');
+    }
+
+    function toggleSpotlight(e) {
+      if (e) e.stopPropagation();
+      closeAllPopovers();
+      const modal = document.getElementById('spotlight-modal');
+      const input = document.getElementById('spotlight-input');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        input.value = '';
+        filterSpotlight('');
+        setTimeout(() => input.focus(), 50);
+      }
+    }
+
+    function filterSpotlight(query) {
+      const resultsEl = document.getElementById('spotlight-results');
+      if (!resultsEl) return;
+      const q = query.trim().toLowerCase();
+
+      const appList = Object.values(APPS).filter(app =>
+        app.name.toLowerCase().includes(q) || app.id.toLowerCase().includes(q)
+      );
+
+      if (!appList.length) {
+        resultsEl.innerHTML = `<div class="py-6 text-center text-xs opacity-60">找不到符合「${escapeHTML(query)}」的項目</div>`;
+        return;
+      }
+
+      resultsEl.innerHTML = appList.map(app => `
+        <button onclick="openApp('${app.id}'); toggleSpotlight();" class="w-full flex items-center space-x-3 px-3 py-2 rounded-xl hover:bg-blue-500 hover:text-white transition text-left">
+          <div class="w-7 h-7 rounded-lg ${app.iconBg} flex items-center justify-center shrink-0">
+            <span class="scale-75">${app.iconHtml}</span>
+          </div>
+          <div>
+            <div class="font-medium text-xs">${app.name}</div>
+            <div class="text-[10px] opacity-70">應用程式</div>
+          </div>
+        </button>
+      `).join('');
+    }
+
+    function showAboutMac() {
+      closeAllPopovers();
+      document.getElementById('about-mac-modal').classList.remove('hidden');
+    }
+
+    function triggerSleepEffect() {
+      closeAllPopovers();
+      document.getElementById('sleep-overlay').classList.remove('hidden');
+    }
+
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // 視窗大小改變時自動確保現有視窗不超出畫面邊界
+    window.addEventListener('resize', () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      Object.values(openWindows).forEach(win => {
+        const winEl = document.getElementById(`window-${win.id}`);
+        if (!winEl) return;
+        if (win.maximized) {
+          win.width = vw - 16;
+          win.height = vh - 115;
+          winEl.style.width = `${win.width}px`;
+          winEl.style.height = `${win.height}px`;
+        } else {
+          win.x = Math.min(win.x, Math.max(8, vw - win.width - 8));
+          win.y = Math.min(win.y, Math.max(32, vh - win.height - 80));
+          winEl.style.left = `${win.x}px`;
+          winEl.style.top = `${win.y}px`;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
