@@ -496,6 +496,25 @@
     let isDriveLoading = false;
     let driveSyncStatus = 'local'; // 'local' | 'syncing' | 'synced' | 'error'
     let driveBackupFileId = null;
+    let driveLastError = '';
+
+    // 解析 Google API 非 2xx 回應，並把原因顯示給使用者（不再靜默失敗）
+    async function explainGoogleError(res, label) {
+      let reason = '';
+      try {
+        const j = await res.clone().json();
+        reason = j?.error?.message || j?.error_description || '';
+        const first = j?.error?.errors?.[0]?.reason || j?.error?.status || '';
+        if (first) reason = `${first}${reason ? '：' + reason : ''}`;
+      } catch (_) {}
+      let hint = '';
+      if (res.status === 403) hint = '（常見原因：Cloud Console 未啟用 Google Drive API、授權時未勾選 Drive 權限、或帳號未列入測試使用者）';
+      const msg = `${label}失敗 HTTP ${res.status} ${reason}${hint}`;
+      console.error(msg);
+      driveLastError = msg;
+      showSystemToast(`${label}失敗 (HTTP ${res.status})，詳情請見 Google Drive 視窗或 Console`);
+      return msg;
+    }
 
     /* ==========================================================================
        全域狀態與資料定義 (繁體中文)
@@ -676,7 +695,22 @@
           client_id: CLIENT_ID,
           scope: SCOPES,
           callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.error) {
+              console.error('Google OAuth 回應錯誤:', tokenResponse);
+              showSystemToast(`Google 授權失敗：${tokenResponse.error_description || tokenResponse.error}`);
+              return;
+            }
             if (tokenResponse && tokenResponse.access_token) {
+              // 使用者在授權頁可取消勾選 Drive 權限，此時仍會回傳 token，必須檢查
+              const driveGranted = google.accounts.oauth2.hasGrantedAllScopes(
+                tokenResponse, 'https://www.googleapis.com/auth/drive');
+              if (!driveGranted) {
+                console.warn('未取得 Drive 權限', tokenResponse.scope);
+                showSystemToast('授權時未勾選「查看、編輯、建立及刪除 Google 雲端硬碟檔案」，請重新登入並勾選全部權限。');
+                google.accounts.oauth2.revoke(tokenResponse.access_token, () => {});
+                return;
+              }
+              driveLastError = '';
               googleAccessToken = tokenResponse.access_token;
               const expiresAt = Date.now() + (Number(tokenResponse.expires_in || 3500) * 1000);
               sessionStorage.setItem('macos_google_token', googleAccessToken);
@@ -693,7 +727,12 @@
           },
           error_callback: (err) => {
             console.warn('Google OAuth 錯誤:', err);
-            showSystemToast('Google 登入已取消或網域尚未授權，已切換為本機模式。');
+            const map = {
+              popup_closed: '授權視窗被關閉，請重新點擊登入。',
+              popup_failed_to_open: '瀏覽器擋住了彈出視窗，請允許此網站的彈出視窗後重試。',
+              unknown: '發生未知錯誤，請檢查 Console。'
+            };
+            showSystemToast(`Google 登入未完成：${map[err?.type] || err?.type || '未知原因'}`);
           }
         });
       } else {
@@ -756,6 +795,8 @@
           googleUserProfile = await res.json();
         } else if (res.status === 401) {
           handleGoogleSignOut();
+        } else {
+          await explainGoogleError(res, '取得使用者資訊');
         }
       } catch (e) {
         console.error('取得 Google 使用者資訊失敗:', e);
@@ -1374,12 +1415,19 @@
           return;
         }
 
+        if (!res.ok) {
+          googleDriveFiles = [];
+          await explainGoogleError(res, '讀取 Google Drive');
+          return;
+        }
+        driveLastError = '';
         const data = await res.json();
         googleDriveFiles = (data.files || []).map(f => {
           const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
-          const isSheet = f.mimeType.includes('spreadsheet');
-          const isDoc = f.mimeType.includes('document') || f.mimeType.includes('pdf');
-          const isImage = f.mimeType.includes('image');
+          const mt = f.mimeType || '';
+          const isSheet = mt.includes('spreadsheet');
+          const isDoc = mt.includes('document') || mt.includes('pdf');
+          const isImage = mt.includes('image');
 
           let icon = 'ph-file';
           let color = 'text-blue-500';
@@ -1408,6 +1456,7 @@
         }
       } catch (err) {
         console.error('讀取 Google Drive 失敗:', err);
+        driveLastError = '網路錯誤：' + (err?.message || err);
         showSystemToast('讀取 Google Drive 失敗，請檢查網路或 API 權限。');
       } finally {
         isDriveLoading = false;
@@ -1439,6 +1488,14 @@
 
         if (isDriveLoading) {
           return `<div class="h-full flex flex-col items-center justify-center opacity-60 space-y-2"><i class="ph-bold ph-spinner animate-spin text-2xl text-blue-500"></i><p>正在讀取 Google 雲端硬碟檔案...</p></div>`;
+        }
+
+        if (driveLastError) {
+          return `<div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-2">
+            <i class="ph-fill ph-warning-circle text-4xl text-amber-500"></i>
+            <p class="text-xs font-bold">無法讀取 Google 雲端硬碟</p>
+            <p class="text-[11px] opacity-70 max-w-sm break-words leading-relaxed">${escapeHTML(driveLastError)}</p>
+          </div>`;
         }
 
         if (!googleDriveFiles.length) {
@@ -1609,6 +1666,12 @@
             handleGoogleSignOut();
             return;
           }
+          if (!searchRes.ok) {
+            await explainGoogleError(searchRes, '搜尋雲端備份檔');
+            driveSyncStatus = 'error';
+            updateNotesSyncBadge();
+            return;
+          }
           const searchData = await searchRes.json();
           if (searchData.files && searchData.files.length > 0) {
             driveBackupFileId = searchData.files[0].id;
@@ -1674,6 +1737,7 @@
           fetchGoogleDriveFiles(); // 更新 Finder 雲端列表
         } else {
           driveSyncStatus = 'error';
+          await explainGoogleError(uploadRes, '上傳備忘錄至 Drive');
         }
       } catch (err) {
         console.error('Google Drive 同步失敗:', err);
